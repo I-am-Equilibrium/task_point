@@ -14,8 +14,6 @@ class AppwriteService {
   static const String listsCollectionId = 'lists';
   static const String tasksCollectionId = 'tasks';
   static const String notificationsCollectionId = 'notifications';
-  static const String appwriteApiKey =
-      'standard_e70d066ead5dbfabbcac7701df26068da093ea54ebe8bd41eb8978296aadd4a59700ee12790398762309806693088ec1f61f47cbff9ca1601b7c89054e7b9df28e72a946977563b0a32fd12631c74f4bbbaadcf05e4e1d0f16a593f236f109aa3c24386a324229416cd208dd33cd923f1addc4436d4cf8ea221a846d83f2ee03';
 
   // ---------- Singleton ----------
   static final AppwriteService _instance = AppwriteService._internal();
@@ -32,10 +30,7 @@ class AppwriteService {
   late final Storage storage;
 
   void _initializeClient() {
-    client
-        .setEndpoint(endpoint)
-        .setProject(projectId)
-        .setSelfSigned(status: true);
+    client.setEndpoint(endpoint).setProject(projectId);
 
     account = Account(client);
     databases = Databases(client);
