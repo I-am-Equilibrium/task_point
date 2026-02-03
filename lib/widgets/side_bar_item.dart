@@ -1357,6 +1357,7 @@ class _SideBarItemState extends State<SideBarItem>
                   ),
                 ),
                 const SizedBox(height: 16),
+
                 Expanded(
                   child: SingleChildScrollView(
                     child: Column(
@@ -1441,31 +1442,87 @@ class _SideBarItemState extends State<SideBarItem>
                               context: context,
                               listColors: _listColors,
                               getCurrentUser: _appwrite.getCurrentUser,
-                              createList: _appwrite.createList,
-                              reloadLists: (createdList) async {
-                                setState(() {
-                                  _items.add({
-                                    'type': 'list',
-                                    'id': createdList['id'],
-                                    'name': createdList['name'],
-                                    'color': _parseColor(createdList['color']),
-                                  });
-                                });
+                              createList:
+                                  ({
+                                    required String color,
+                                    required String name,
+                                    required String userId,
+                                  }) async {
+                                    final tempId =
+                                        'temp_${DateTime.now().millisecondsSinceEpoch}';
 
-                                final user = await _appwrite.getCurrentUser();
-                                if (user != null) {
-                                  await LocalStorageService.saveGroupsStructure(
-                                    _items,
-                                    userId: user.$id,
-                                  );
-                                }
-                              },
+                                    Color parsedColor;
+                                    try {
+                                      parsedColor = Color(int.parse(color));
+                                    } catch (e) {
+                                      parsedColor = AppColors.black;
+                                    }
+
+                                    final optimisticItem = {
+                                      'type': 'list',
+                                      'id': tempId,
+                                      'name': name,
+                                      'color': parsedColor,
+                                      'owner_id': userId,
+                                    };
+
+                                    setState(() {
+                                      _items.add(optimisticItem);
+                                    });
+
+                                    try {
+                                      final createdList = await _appwrite
+                                          .createList(
+                                            userId: userId,
+                                            name: name,
+                                            color: color,
+                                          );
+
+                                      if (createdList != null) {
+                                        if (mounted) {
+                                          setState(() {
+                                            final index = _items.indexWhere(
+                                              (item) => item['id'] == tempId,
+                                            );
+                                            if (index != -1) {
+                                              _items[index] = {
+                                                'type': 'list',
+                                                'id': createdList['id'],
+                                                'name': createdList['name'],
+                                                'color': _parseColor(
+                                                  createdList['color'],
+                                                ),
+                                                'owner_id':
+                                                    createdList['owner_id'] ??
+                                                    userId,
+                                              };
+                                            }
+                                          });
+                                          await LocalStorageService.saveGroupsStructure(
+                                            _items,
+                                            userId: userId,
+                                          );
+                                        }
+                                        return createdList;
+                                      }
+                                    } catch (e) {
+                                      print('❌ Ошибка при создании списка: $e');
+                                      if (mounted) {
+                                        setState(() {
+                                          _items.removeWhere(
+                                            (item) => item['id'] == tempId,
+                                          );
+                                        });
+                                      }
+                                    }
+                                    return null;
+                                  },
+                              reloadLists: (_) async {},
                               mounted: mounted,
                               onExpand: widget.onExpand ?? () {},
                               isExpanded: widget.isExpanded,
                             );
                           },
-
                           child: AnimatedContainer(
                             duration: const Duration(milliseconds: 200),
                             transform: Matrix4.identity()
