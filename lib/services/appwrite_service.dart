@@ -271,6 +271,7 @@ class AppwriteService {
       final result = await databases.listDocuments(
         databaseId: databaseId,
         collectionId: listsCollectionId,
+        queries: [Query.limit(100)],
       );
 
       return result.documents.map((doc) {
@@ -307,6 +308,11 @@ class AppwriteService {
           'members': <String>[],
           'admins': <String>[],
         },
+        permissions: [
+          Permission.read(Role.user(userId)),
+          Permission.update(Role.user(userId)),
+          Permission.delete(Role.user(userId)),
+        ],
       );
 
       print('✅ Список успешно создан пользователем $userId');
