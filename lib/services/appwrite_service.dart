@@ -48,6 +48,48 @@ class AppwriteService {
     }
   }
 
+  Future<List<Document>> _fetchAllDocuments({
+    required String collectionId,
+    List<String>? queries,
+  }) async {
+    List<Document> allDocs = [];
+    String? lastId;
+    bool hasMore = true;
+
+    List<String> currentQueries = [...(queries ?? []), Query.limit(100)];
+
+    while (hasMore) {
+      if (lastId != null) {
+        currentQueries = [
+          ...(queries ?? []),
+          Query.limit(100),
+          Query.cursorAfter(lastId),
+        ];
+      }
+
+      try {
+        final response = await databases.listDocuments(
+          databaseId: databaseId,
+          collectionId: collectionId,
+          queries: currentQueries,
+        );
+
+        allDocs.addAll(response.documents);
+
+        if (response.documents.length < 100) {
+          hasMore = false;
+        } else {
+          lastId = response.documents.last.$id;
+        }
+      } catch (e) {
+        print("❌ Ошибка при пагинации ($collectionId): $e");
+        hasMore = false;
+      }
+    }
+
+    return allDocs;
+  }
+
   // ---------- AUTH ----------
   Future<User?> registerAndReturnUser({
     required String email,
@@ -268,13 +310,12 @@ class AppwriteService {
   Future<List<Map<String, dynamic>>> getAllLists() async {
     _ensureInitialized();
     try {
-      final result = await databases.listDocuments(
-        databaseId: databaseId,
+      final documents = await _fetchAllDocuments(
         collectionId: listsCollectionId,
-        queries: [Query.limit(100)],
+        queries: [Query.orderDesc('\$createdAt')],
       );
 
-      return result.documents.map((doc) {
+      return documents.map((doc) {
         final data = Map<String, dynamic>.from(doc.data);
         return {
           'id': doc.$id,
@@ -579,8 +620,7 @@ class AppwriteService {
     final current = await getCurrentUser();
     if (current == null) return [];
 
-    final res = await databases.listDocuments(
-      databaseId: databaseId,
+    final documents = await _fetchAllDocuments(
       collectionId: listsCollectionId,
       queries: [
         Query.or([
@@ -590,7 +630,7 @@ class AppwriteService {
       ],
     );
 
-    return res.documents.map((d) {
+    return documents.map((d) {
       return {
         'id': d.$id,
         'title': d.data['title'] ?? d.data['name'] ?? 'Без названия',
@@ -686,13 +726,12 @@ class AppwriteService {
 
       final listIds = userLists.documents.map((d) => d.$id).toList();
 
-      final tasksResult = await databases.listDocuments(
-        databaseId: databaseId,
+      final documents = await _fetchAllDocuments(
         collectionId: tasksCollectionId,
         queries: [Query.contains('list_id', listIds)],
       );
 
-      return tasksResult.documents.map((doc) {
+      return documents.map((doc) {
         final json = Map<String, dynamic>.from(doc.data);
         json['id'] = doc.$id;
         return TaskModel.fromJson(json);
@@ -724,12 +763,11 @@ class AppwriteService {
 
     if (accessibleListIds.isEmpty) return [];
 
-    final tasksDocs = await databases.listDocuments(
-      databaseId: databaseId,
+    final allTaskDocs = await _fetchAllDocuments(
       collectionId: tasksCollectionId,
     );
 
-    return tasksDocs.documents
+    return allTaskDocs
         .map((doc) {
           final json = Map<String, dynamic>.from(doc.data);
           json['id'] = doc.$id;
