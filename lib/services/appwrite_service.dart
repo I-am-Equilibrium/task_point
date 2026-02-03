@@ -6,7 +6,7 @@ import 'package:task_point/services/task_model.dart';
 
 class AppwriteService {
   // ---------- Константы ----------
-  static const String endpoint = 'https://cloud.appwrite.io/v1';
+  static const String endpoint = 'https://fra.cloud.appwrite.io/v1';
   static const String projectId = '68f628940017cbb1a756';
   static const String databaseId = '68fbb16d000f676ccba9';
   static const String usersCollectionId = 'users';
