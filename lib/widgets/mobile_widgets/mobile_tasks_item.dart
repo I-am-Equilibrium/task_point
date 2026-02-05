@@ -208,6 +208,11 @@ class _MobileTasksScreenState extends State<MobileTasksScreen> {
             .toList();
         tasks.sort((a, b) => (a.order ?? 0).compareTo(b.order ?? 0));
       });
+
+      for (var task in tasks) {
+        if (task.executor != null) await _ensureUserLoaded(task.executor);
+      }
+
       _handleHighlighting();
     } catch (e) {
       debugPrint('Ошибка загрузки важных задач: $e');
@@ -231,6 +236,11 @@ class _MobileTasksScreenState extends State<MobileTasksScreen> {
             .toList();
         tasks.sort((a, b) => (a.order ?? 0).compareTo(b.order ?? 0));
       });
+
+      for (var task in tasks) {
+        if (task.executor != null) await _ensureUserLoaded(task.executor);
+      }
+
       _handleHighlighting();
     } catch (e) {
       debugPrint('Ошибка загрузки переданных задач: $e');

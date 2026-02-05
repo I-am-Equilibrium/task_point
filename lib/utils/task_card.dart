@@ -24,6 +24,7 @@ class TaskCard extends StatefulWidget {
   final String? executorName;
   final bool enableContextMenu;
   final bool canToggleImportant;
+  final bool isPanelOpen;
 
   const TaskCard({
     super.key,
@@ -41,6 +42,7 @@ class TaskCard extends StatefulWidget {
     this.onTaskMoved,
     required this.isOwner,
     required this.isAdmin,
+    this.isPanelOpen = false,
   });
 
   @override
@@ -167,10 +169,14 @@ class _TaskCardState extends State<TaskCard> {
           onEnter: (_) => setState(() => _isHover = true),
           onExit: (_) => setState(() => _isHover = false),
           child: AnimatedContainer(
-            duration: const Duration(milliseconds: 150),
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeInOut,
             transform: Matrix4.identity()..scale(_isHover ? 1.01 : 1.0),
             child: Container(
-              margin: const EdgeInsets.only(top: 10, right: 40),
+              margin: EdgeInsets.only(
+                top: 10,
+                right: widget.isPanelOpen ? 340 : 40,
+              ),
               padding: const EdgeInsets.fromLTRB(15, 15, 15, 12),
               decoration: BoxDecoration(
                 color: AppColors.white,
@@ -277,18 +283,25 @@ class _TaskHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final TextStyle numberStyle = TextStyle(
+      fontSize: 14,
+      fontWeight: FontWeight.w600,
+      color: listColor,
+      decoration: isCompleted ? TextDecoration.lineThrough : null,
+    );
+
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        Text(
-          task.invoice ?? "",
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-            color: listColor,
-            decoration: isCompleted ? TextDecoration.lineThrough : null,
-          ),
-        ),
+        Text(task.invoice ?? "", style: numberStyle),
+
+        if ((task.utd ?? "").isNotEmpty) ...[
+          const SizedBox(width: 10),
+          Text("-", style: numberStyle),
+          const SizedBox(width: 10),
+          Text(task.utd!, style: numberStyle),
+        ],
+
         const SizedBox(width: 12),
         Text(
           "Товары:",
@@ -348,6 +361,31 @@ class _TaskDetails extends StatelessWidget {
     }
   }
 
+  Widget _buildAvatar(String? name) {
+    final String firstLetter = (name != null && name.isNotEmpty)
+        ? name[0].toUpperCase()
+        : "?";
+
+    return Container(
+      width: 22,
+      height: 22,
+      decoration: const BoxDecoration(
+        color: AppColors.skyBlue,
+        shape: BoxShape.circle,
+      ),
+      child: Center(
+        child: Text(
+          firstLetter,
+          style: const TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: AppColors.black,
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Row(
@@ -365,7 +403,23 @@ class _TaskDetails extends StatelessWidget {
         ],
         _TaskIconText(icon: "date.png", text: _formatDate(task.date)),
         _TaskIconText(icon: "address.png", text: task.address),
-        _TaskIconText(icon: "user.png", text: executorName), // <--- без widget
+
+        if (executorName != null && executorName!.isNotEmpty) ...[
+          const SizedBox(width: 8),
+          Container(width: 1, height: 20, color: AppColors.black),
+          const SizedBox(width: 10),
+          _buildAvatar(executorName),
+          const SizedBox(width: 8),
+          Text(
+            executorName!,
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+              color: AppColors.black,
+            ),
+          ),
+        ],
+
         _TaskIconText(icon: "remind.png", text: _formatDateTime(task.reminder)),
         if (task.comment != null && task.comment!.isNotEmpty) ...[
           const SizedBox(width: 8),

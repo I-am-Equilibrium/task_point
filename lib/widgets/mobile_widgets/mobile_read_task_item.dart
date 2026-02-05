@@ -36,6 +36,7 @@ class MobileReadTaskScreen extends StatefulWidget {
 
 class _MobileReadTaskScreenState extends State<MobileReadTaskScreen> {
   late TextEditingController _invoiceController;
+  late TextEditingController _utdController;
   late TextEditingController _companyController;
   late TextEditingController _productsController;
   late TextEditingController _dateController;
@@ -62,6 +63,7 @@ class _MobileReadTaskScreenState extends State<MobileReadTaskScreen> {
     super.initState();
 
     _invoiceController = TextEditingController(text: widget.task.invoice ?? "");
+    _utdController = TextEditingController(text: widget.task.utd ?? "");
     _companyController = TextEditingController(text: widget.task.company ?? "");
     _productsController = TextEditingController(
       text: widget.task.products ?? "",
@@ -551,8 +553,11 @@ class _MobileReadTaskScreenState extends State<MobileReadTaskScreen> {
   Future<void> _updateTask() async {
     if (_productsController.text.isEmpty) return;
 
+    debugPrint("Сохраняю УПД: ${_utdController.text}");
+
     final updatedTask = widget.task.copyWith(
       invoice: _invoiceController.text,
+      utd: _utdController.text,
       company: _companyController.text,
       products: _productsController.text,
       date: _selectedDate?.toIso8601String(),
@@ -659,17 +664,47 @@ class _MobileReadTaskScreenState extends State<MobileReadTaskScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildSectionLabel(
-                    "Номер накладной",
-                    color: widget.listColor,
-                    topPadding: 30,
-                  ),
-                  _buildUnderlinedTextField(
-                    controller: _invoiceController,
-                    hintText: "11-11111",
-                    readOnly: !_isAdmin,
-                    keyboardType: TextInputType.phone,
-                    inputFormatters: [InvoiceInputFormatter()],
+                  Padding(
+                    padding: const EdgeInsets.only(top: 30),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _buildSectionLabel(
+                                "Счет",
+                                color: widget.listColor,
+                              ),
+                              _buildUnderlinedTextField(
+                                controller: _invoiceController,
+                                hintText: "11-11111",
+                                readOnly: !_isAdmin,
+                                keyboardType: TextInputType.phone,
+                                inputFormatters: [InvoiceInputFormatter()],
+                              ),
+                            ],
+                          ),
+                        ),
+                        if (_isAdmin || (_utdController.text.isNotEmpty))
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _buildSectionLabel(
+                                  "УПД",
+                                  color: widget.listColor,
+                                ),
+                                _buildUnderlinedTextField(
+                                  controller: _utdController,
+                                  hintText: "№ УПД",
+                                  readOnly: !_isAdmin,
+                                ),
+                              ],
+                            ),
+                          ),
+                      ],
+                    ),
                   ),
                   _buildSectionLabel("Компания", topPadding: 10),
                   CompositedTransformTarget(

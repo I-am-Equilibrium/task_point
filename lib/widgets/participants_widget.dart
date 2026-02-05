@@ -51,19 +51,6 @@ class _ParticipantsWidgetState extends State<ParticipantsWidget> {
 
   late String _listName;
 
-  final List<Color> fallbackColors = [
-    AppColors.skyBlue,
-    AppColors.cheese,
-    AppColors.green,
-    AppColors.red,
-    AppColors.lavendar,
-  ];
-
-  Color _getFallbackColor(String name) {
-    final index = name.hashCode.abs() % fallbackColors.length;
-    return fallbackColors[index];
-  }
-
   Future<void> _addMember(Map<String, dynamic> member) async {
     final memberId = member['id'];
 
@@ -238,6 +225,7 @@ class _ParticipantsWidgetState extends State<ParticipantsWidget> {
     final name = member['name'] ?? 'Пользователь';
     final avatar = member['avatar_url'];
     final userId = member['id'];
+    final bool hasAvatar = avatar != null && avatar.toString().isNotEmpty;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 5),
@@ -256,7 +244,6 @@ class _ParticipantsWidgetState extends State<ParticipantsWidget> {
             isAdmin: isAdmin,
           );
         },
-
         child: MouseRegion(
           onEnter: (_) {
             if (!isOwner) setState(() => _hoveredMemberId = userId);
@@ -270,7 +257,6 @@ class _ParticipantsWidgetState extends State<ParticipantsWidget> {
                   (_isCurrentUserAdmin && isAdmin))
               ? SystemMouseCursors.basic
               : SystemMouseCursors.click,
-
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 120),
             padding: const EdgeInsets.symmetric(vertical: 6),
@@ -282,7 +268,7 @@ class _ParticipantsWidgetState extends State<ParticipantsWidget> {
             ),
             child: Row(
               children: [
-                avatar != null
+                hasAvatar
                     ? ClipRRect(
                         borderRadius: BorderRadius.circular(17),
                         child: Image.network(
@@ -290,25 +276,11 @@ class _ParticipantsWidgetState extends State<ParticipantsWidget> {
                           width: 40,
                           height: 40,
                           fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) =>
+                              _buildPlaceholderAvatar(name),
                         ),
                       )
-                    : Container(
-                        width: 40,
-                        height: 40,
-                        decoration: BoxDecoration(
-                          color: _getFallbackColor(name),
-                          shape: BoxShape.circle,
-                        ),
-                        alignment: Alignment.center,
-                        child: Text(
-                          name[0].toUpperCase(),
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w900,
-                            color: AppColors.black,
-                          ),
-                        ),
-                      ),
+                    : _buildPlaceholderAvatar(name),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Row(
@@ -321,7 +293,7 @@ class _ParticipantsWidgetState extends State<ParticipantsWidget> {
                           color: AppColors.black,
                         ),
                       ),
-                      if (isOwner) Spacer(),
+                      if (isOwner) const Spacer(),
                       if (isOwner)
                         const Text(
                           "Владелец",
@@ -346,6 +318,26 @@ class _ParticipantsWidgetState extends State<ParticipantsWidget> {
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPlaceholderAvatar(String name) {
+    return Container(
+      width: 40,
+      height: 40,
+      decoration: const BoxDecoration(
+        color: AppColors.skyBlue,
+        shape: BoxShape.circle,
+      ),
+      alignment: Alignment.center,
+      child: Text(
+        name.isNotEmpty ? name[0].toUpperCase() : "?",
+        style: const TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.bold,
+          color: AppColors.black,
         ),
       ),
     );
@@ -432,7 +424,6 @@ class _ParticipantsWidgetState extends State<ParticipantsWidget> {
                           ),
                         const SizedBox(height: 12),
                       ],
-
                       if ((_isCurrentUserOwner && member['id'] != _ownerId) ||
                           (_isCurrentUserAdmin && !isAdmin))
                         _ContextMenuItem(
@@ -547,7 +538,7 @@ class _ParticipantsWidgetState extends State<ParticipantsWidget> {
                     future: _initialLoadFuture,
                     builder: (context, snapshot) {
                       if (snapshot.connectionState != ConnectionState.done) {
-                        return SizedBox(
+                        return const SizedBox(
                           height: 450,
                           child: Center(
                             child: CircularProgressIndicator(
@@ -582,7 +573,6 @@ class _ParticipantsWidgetState extends State<ParticipantsWidget> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             const SizedBox(height: 20),
-
                             Padding(
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 15,
@@ -614,10 +604,10 @@ class _ParticipantsWidgetState extends State<ParticipantsWidget> {
                                     ),
                                   ),
                                   const SizedBox(width: 14),
-                                  Expanded(
+                                  const Expanded(
                                     child: Align(
                                       alignment: Alignment.center,
-                                      child: const Text(
+                                      child: Text(
                                         "Участники списка",
                                         style: TextStyle(
                                           fontSize: 16,
@@ -631,9 +621,7 @@ class _ParticipantsWidgetState extends State<ParticipantsWidget> {
                                 ],
                               ),
                             ),
-
                             const SizedBox(height: 20),
-
                             Padding(
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 20,
@@ -650,21 +638,18 @@ class _ParticipantsWidgetState extends State<ParticipantsWidget> {
                                     isAdmin: false,
                                     isOwner: true,
                                   ),
-
                                   ...admins.map(
                                     (member) => _buildUserRow(
                                       member: member,
                                       isAdmin: true,
                                     ),
                                   ),
-
                                   ...members.map(
                                     (member) => _buildUserRow(
                                       member: member,
                                       isAdmin: false,
                                     ),
                                   ),
-
                                   if (remainingMembers.isNotEmpty) ...[
                                     const Text(
                                       "Добавить из команды",
@@ -676,7 +661,6 @@ class _ParticipantsWidgetState extends State<ParticipantsWidget> {
                                     ),
                                     const SizedBox(height: 10),
                                   ],
-
                                   ...remainingMembers.asMap().entries.map((
                                     entry,
                                   ) {
@@ -685,6 +669,9 @@ class _ParticipantsWidgetState extends State<ParticipantsWidget> {
                                     final name =
                                         member['name'] ?? 'Пользователь';
                                     final avatar = member['avatar_url'];
+                                    final bool hasAvatar =
+                                        avatar != null &&
+                                        avatar.toString().isNotEmpty;
 
                                     return Padding(
                                       padding: const EdgeInsets.only(
@@ -692,7 +679,7 @@ class _ParticipantsWidgetState extends State<ParticipantsWidget> {
                                       ),
                                       child: Row(
                                         children: [
-                                          avatar != null
+                                          hasAvatar
                                               ? ClipRRect(
                                                   borderRadius:
                                                       BorderRadius.circular(17),
@@ -701,30 +688,18 @@ class _ParticipantsWidgetState extends State<ParticipantsWidget> {
                                                     width: 40,
                                                     height: 40,
                                                     fit: BoxFit.cover,
+                                                    errorBuilder:
+                                                        (
+                                                          context,
+                                                          error,
+                                                          stackTrace,
+                                                        ) =>
+                                                            _buildPlaceholderAvatar(
+                                                              name,
+                                                            ),
                                                   ),
                                                 )
-                                              : Container(
-                                                  width: 40,
-                                                  height: 40,
-                                                  decoration: BoxDecoration(
-                                                    color: _getFallbackColor(
-                                                      name,
-                                                    ),
-                                                    shape: BoxShape.circle,
-                                                  ),
-                                                  alignment: Alignment.center,
-                                                  child: Text(
-                                                    name.isNotEmpty
-                                                        ? name[0].toUpperCase()
-                                                        : "?",
-                                                    style: const TextStyle(
-                                                      fontSize: 18,
-                                                      fontWeight:
-                                                          FontWeight.w900,
-                                                      color: AppColors.black,
-                                                    ),
-                                                  ),
-                                                ),
+                                              : _buildPlaceholderAvatar(name),
                                           const SizedBox(width: 10),
                                           Expanded(
                                             child: Text(

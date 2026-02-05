@@ -45,9 +45,11 @@ class ReadTaskItem extends StatefulWidget {
 class ReadTaskItemState extends State<ReadTaskItem> {
   bool _isHoveringClose = false;
   bool _isSaveHover = false;
+  bool _isDeleteHover = false;
   String? _previousExecutorId;
 
   final TextEditingController _invoiceController = TextEditingController();
+  final TextEditingController _utdController = TextEditingController();
   final TextEditingController _companyController = TextEditingController();
   final TextEditingController _productsController = TextEditingController();
   final TextEditingController _dateController = TextEditingController();
@@ -70,6 +72,7 @@ class ReadTaskItemState extends State<ReadTaskItem> {
   TimeOfDay _selectedReminderTime = TimeOfDay.now();
 
   String? _executorName;
+  String? _executorAvatarUrl;
 
   void _formatInvoiceNumber(String value) {
     String digits = value.replaceAll(RegExp(r'[^0-9]'), '');
@@ -99,6 +102,24 @@ class ReadTaskItemState extends State<ReadTaskItem> {
       text: result,
       selection: TextSelection.collapsed(offset: result.length),
     );
+  }
+
+  void _formatUtdNumber(String value) {
+    String digits = value.replaceAll(RegExp(r'[^0-9]'), '');
+    if (digits.length > 7) digits = digits.substring(0, 7);
+
+    if (digits.length <= 6) {
+      _utdController.value = TextEditingValue(
+        text: digits,
+        selection: TextSelection.collapsed(offset: digits.length),
+      );
+    } else {
+      final result = "${digits.substring(0, 6)}/${digits.substring(6)}";
+      _utdController.value = TextEditingValue(
+        text: result,
+        selection: TextSelection.collapsed(offset: result.length),
+      );
+    }
   }
 
   OverlayEntry? _calendarOverlay;
@@ -248,10 +269,10 @@ class ReadTaskItemState extends State<ReadTaskItem> {
                                     setState(() {
                                       _selectedExecutorId = user["id"];
                                       _executorName = user["name"];
+                                      _executorAvatarUrl = user["avatar_url"];
                                       _executorController.text = user["name"];
                                     });
                                     _hideExecutorOverlay();
-                                    setState(() {});
                                   },
                                   child: Padding(
                                     padding: const EdgeInsets.symmetric(
@@ -530,53 +551,6 @@ class ReadTaskItemState extends State<ReadTaskItem> {
     }
   }
 
-  Widget _DeleteAction() {
-    bool isHovering = false;
-
-    return StatefulBuilder(
-      builder: (context, setState) {
-        return MouseRegion(
-          onEnter: (_) => setState(() => isHovering = true),
-          onExit: (_) => setState(() => isHovering = false),
-          cursor: SystemMouseCursors.click,
-          child: GestureDetector(
-            onTap: () async {
-              await _deleteTask();
-            },
-
-            child: AnimatedOpacity(
-              opacity: isHovering ? 0.8 : 1.0,
-              duration: const Duration(milliseconds: 120),
-              child: AnimatedScale(
-                scale: isHovering ? 1.03 : 1.0,
-                duration: const Duration(milliseconds: 120),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Image.asset(
-                      "assets/icons/delete.png",
-                      width: 20,
-                      height: 20,
-                    ),
-                    const SizedBox(width: 5),
-                    const Text(
-                      "Удалить задачу",
-                      style: TextStyle(
-                        color: AppColors.red,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
   Widget _BottomAction() {
     final bool isSpecial = _isSpecialList;
     bool isHovering = false;
@@ -593,56 +567,77 @@ class ReadTaskItemState extends State<ReadTaskItem> {
                 widget.onGoToTask?.call();
                 widget.onClose();
               } else {
-                await _deleteTask();
+                _showDeleteConfirmation();
               }
             },
             child: AnimatedOpacity(
               opacity: isHovering ? 0.8 : 1.0,
               duration: const Duration(milliseconds: 120),
               child: AnimatedScale(
-                scale: isHovering ? 1.03 : 1.0,
+                scale: isHovering ? 1.05 : 1.0,
                 duration: const Duration(milliseconds: 120),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
-                  children: isSpecial
-                      ? [
-                          const Text(
-                            "Перейти к задаче",
-                            style: TextStyle(
-                              color: AppColors.black,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          const SizedBox(width: 6),
-
-                          Image.asset(
-                            "assets/icons/arrow.png",
-                            width: 20,
-                            height: 20,
-                            color: AppColors.black,
-                          ),
-                        ]
-                      : [
-                          Image.asset(
-                            "assets/icons/delete.png",
-                            width: 20,
-                            height: 20,
-                          ),
-                          const SizedBox(width: 5),
-                          const Text(
-                            "Удалить задачу",
-                            style: TextStyle(
-                              color: AppColors.red,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
+                  children: [
+                    const Text(
+                      "Перейти к задаче",
+                      style: TextStyle(
+                        color: AppColors.black,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Image.asset(
+                      "assets/icons/arrow.png",
+                      width: 20,
+                      height: 20,
+                      color: AppColors.black,
+                    ),
+                  ],
                 ),
               ),
             ),
           ),
+        );
+      },
+    );
+  }
+
+  void _showDeleteConfirmation() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: AppColors.white,
+          surfaceTintColor: Colors.transparent,
+          title: const Text("Удаление задачи"),
+          content: const Text("Вы действительно хотите удалить эту задачу?"),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text(
+                "Отмена",
+                style: TextStyle(color: AppColors.grey),
+              ),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                _deleteTask();
+              },
+              child: const Text(
+                "Удалить",
+                style: TextStyle(
+                  color: AppColors.red,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
         );
       },
     );
@@ -656,6 +651,7 @@ class ReadTaskItemState extends State<ReadTaskItem> {
     if (widget.editingTask != null) {
       final t = widget.editingTask!;
       _invoiceController.text = t.invoice ?? '';
+      _utdController.text = t.utd ?? '';
       _companyController.text = t.company ?? '';
       _productsController.text = t.products ?? '';
       _dateController.text = _parseDateSafe(t.date) != null
@@ -699,6 +695,7 @@ class ReadTaskItemState extends State<ReadTaskItem> {
 
     setState(() {
       _executorName = user?["name"];
+      _executorAvatarUrl = user?["avatar_url"];
       _executorController.text = _executorName ?? '';
     });
   }
@@ -815,6 +812,7 @@ class ReadTaskItemState extends State<ReadTaskItem> {
 
   void _resetFields() {
     _invoiceController.clear();
+    _utdController.clear();
     _companyController.clear();
     _productsController.clear();
     _dateController.clear();
@@ -872,6 +870,9 @@ class ReadTaskItemState extends State<ReadTaskItem> {
     if (widget.editingTask != null) {
       task = widget.editingTask!;
       task.invoice = _invoiceController.text;
+
+      task.utd = _utdController.text;
+
       task.company = _companyController.text;
       task.products = _productsController.text;
       task.date = _selectedDate?.toIso8601String();
@@ -906,6 +907,7 @@ class ReadTaskItemState extends State<ReadTaskItem> {
         listId: widget.listId,
         order: newOrder,
         invoice: _invoiceController.text,
+        utd: _utdController.text,
         company: _companyController.text,
         products: _productsController.text,
         date: _selectedDate?.toIso8601String(),
@@ -1043,55 +1045,85 @@ class ReadTaskItemState extends State<ReadTaskItem> {
 
                   const SizedBox(height: 20),
 
-                  const Padding(
-                    padding: EdgeInsets.only(left: 15),
-                    child: Text(
-                      "Номер Накладной",
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.black,
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 5),
-
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 15),
-                    child: TextField(
-                      controller: _invoiceController,
-                      onChanged: canEdit ? _formatInvoiceNumber : null,
-                      enabled: canEdit,
-                      keyboardType: TextInputType.number,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                        color: AppColors.black,
-                      ),
-                      decoration: const InputDecoration(
-                        hintText: "пример: 11-11111",
-                        hintStyle: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w400,
-                          color: AppColors.grey,
-                        ),
-                        isDense: true,
-                        contentPadding: EdgeInsets.symmetric(vertical: 10),
-                        border: UnderlineInputBorder(
-                          borderSide: BorderSide(color: AppColors.black),
-                        ),
-                        enabledBorder: UnderlineInputBorder(
-                          borderSide: BorderSide(color: AppColors.black),
-                        ),
-                        focusedBorder: UnderlineInputBorder(
-                          borderSide: BorderSide(
-                            color: AppColors.black,
-                            width: 1,
-                          ),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Padding(
+                              padding: EdgeInsets.only(left: 15),
+                              child: Text(
+                                "Счет",
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.black,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 5),
+                            Padding(
+                              padding: const EdgeInsets.only(
+                                left: 15,
+                                right: 7.5,
+                              ),
+                              child: TextField(
+                                controller: _invoiceController,
+                                onChanged: canEdit
+                                    ? _formatInvoiceNumber
+                                    : null,
+                                enabled: canEdit,
+                                keyboardType: TextInputType.number,
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                  color: AppColors.black,
+                                ),
+                                decoration: _inputDecoration("11111-11"),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                    ),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Padding(
+                              padding: EdgeInsets.only(left: 7.5),
+                              child: Text(
+                                "УПД",
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.black,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 5),
+                            Padding(
+                              padding: const EdgeInsets.only(
+                                left: 7.5,
+                                right: 15,
+                              ),
+                              child: TextField(
+                                controller: _utdController,
+                                onChanged: canEdit ? _formatUtdNumber : null,
+                                enabled: canEdit,
+                                keyboardType: TextInputType.number,
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                  color: AppColors.black,
+                                ),
+                                decoration: _inputDecoration("111111/1"),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
 
                   const SizedBox(height: 8),
@@ -1355,6 +1387,7 @@ class ReadTaskItemState extends State<ReadTaskItem> {
                         controller: _executorController,
                         readOnly: true,
                         onTap: canEdit ? _showExecutorOverlay : null,
+                        textAlignVertical: TextAlignVertical.center,
                         style: const TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w500,
@@ -1368,24 +1401,60 @@ class ReadTaskItemState extends State<ReadTaskItem> {
                             color: AppColors.grey,
                           ),
                           isDense: true,
-                          contentPadding: const EdgeInsets.only(
-                            left: 28,
-                            right: 0,
-                            top: 15,
+                          contentPadding: const EdgeInsets.symmetric(
+                            vertical: 12,
+                          ),
+                          prefixIconConstraints: const BoxConstraints(
+                            minWidth: 45,
+                            minHeight: 30,
                           ),
                           prefixIcon: Padding(
-                            padding: const EdgeInsets.all(10),
-                            child: Image.asset(
-                              "assets/icons/for_user.png",
-                              width: 18,
-                              height: 18,
-                              color: _fieldColor(_hasExecutor),
-                            ),
+                            padding: const EdgeInsets.only(right: 8, left: 0),
+                            child: _selectedExecutorId == null
+                                ? Image.asset(
+                                    "assets/icons/for_user.png",
+                                    width: 18,
+                                    height: 18,
+                                    color: _fieldColor(_hasExecutor),
+                                  )
+                                : Container(
+                                    width: 28,
+                                    height: 28,
+                                    decoration: const BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: AppColors.skyBlue,
+                                    ),
+                                    child: CircleAvatar(
+                                      radius: 14,
+                                      backgroundColor: Colors.transparent,
+                                      backgroundImage:
+                                          (_executorAvatarUrl != null &&
+                                              _executorAvatarUrl!.isNotEmpty)
+                                          ? NetworkImage(_executorAvatarUrl!)
+                                          : null,
+                                      child:
+                                          (_executorAvatarUrl == null ||
+                                                  _executorAvatarUrl!
+                                                      .isEmpty) &&
+                                              _executorName != null
+                                          ? Text(
+                                              _executorName!.isNotEmpty
+                                                  ? _executorName![0]
+                                                        .toUpperCase()
+                                                  : "",
+                                              style: const TextStyle(
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.bold,
+                                                color: AppColors.black,
+                                              ),
+                                            )
+                                          : null,
+                                    ),
+                                  ),
                           ),
                           border: _underline(_hasExecutor),
                           enabledBorder: _underline(_hasExecutor),
                           focusedBorder: _underline(_hasExecutor),
-
                           suffixIcon:
                               canEdit && _executorController.text.isNotEmpty
                               ? GestureDetector(
@@ -1394,6 +1463,7 @@ class ReadTaskItemState extends State<ReadTaskItem> {
                                       _executorController.clear();
                                       _selectedExecutorId = null;
                                       _executorName = null;
+                                      _executorAvatarUrl = null;
                                     });
                                   },
                                   child: Padding(
@@ -1560,48 +1630,104 @@ class ReadTaskItemState extends State<ReadTaskItem> {
           if (canEdit)
             Padding(
               padding: const EdgeInsets.only(
-                left: 40,
-                right: 40,
+                left: 20,
+                right: 20,
                 bottom: 20,
                 top: 12,
               ),
-              child: MouseRegion(
-                onEnter: (_) => setState(() => _isSaveHover = true),
-                onExit: (_) => setState(() => _isSaveHover = false),
-                cursor: SystemMouseCursors.click,
-                child: GestureDetector(
-                  onTap: _saveTask,
-                  child: AnimatedScale(
-                    scale: _isSaveHover ? 1.03 : 1.0,
-                    duration: const Duration(milliseconds: 120),
-                    child: Container(
-                      height: 42,
-                      alignment: Alignment.center,
-                      margin: const EdgeInsets.symmetric(
-                        horizontal: 15,
-                        vertical: 20,
-                      ),
-                      decoration: BoxDecoration(
-                        color: _isSaveHover
-                            ? widget.listColor.withOpacity(0.8)
-                            : widget.listColor,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: const Text(
-                        "Изменить",
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
+              child: Row(
+                children: [
+                  Expanded(
+                    child: MouseRegion(
+                      onEnter: (_) => setState(() => _isSaveHover = true),
+                      onExit: (_) => setState(() => _isSaveHover = false),
+                      cursor: SystemMouseCursors.click,
+                      child: GestureDetector(
+                        onTap: _saveTask,
+                        child: AnimatedScale(
+                          scale: _isSaveHover ? 1.03 : 1.0,
+                          duration: const Duration(milliseconds: 120),
+                          child: Container(
+                            height: 42,
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
+                              color: _isSaveHover
+                                  ? widget.listColor.withOpacity(0.8)
+                                  : widget.listColor,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Text(
+                              "Изменить",
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
                         ),
                       ),
                     ),
                   ),
-                ),
+
+                  const SizedBox(width: 10),
+
+                  MouseRegion(
+                    onEnter: (_) => setState(() => _isDeleteHover = true),
+                    onExit: (_) => setState(() => _isDeleteHover = false),
+                    cursor: SystemMouseCursors.click,
+                    child: GestureDetector(
+                      onTap: _showDeleteConfirmation,
+                      child: AnimatedScale(
+                        scale: _isDeleteHover ? 1.05 : 1.0,
+                        duration: const Duration(milliseconds: 120),
+                        child: Container(
+                          width: 42,
+                          height: 42,
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
+                            color: _isDeleteHover
+                                ? AppColors.red.withOpacity(0.8)
+                                : AppColors.red,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Image.asset(
+                            "assets/icons/delete.png",
+                            width: 22,
+                            height: 22,
+                            color: AppColors.white,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
         ],
       ),
     );
   }
+}
+
+InputDecoration _inputDecoration(String hint) {
+  return InputDecoration(
+    hintText: hint,
+    hintStyle: const TextStyle(
+      fontSize: 14,
+      fontWeight: FontWeight.w400,
+      color: AppColors.grey,
+    ),
+    isDense: true,
+    contentPadding: const EdgeInsets.symmetric(vertical: 10),
+    enabledBorder: const UnderlineInputBorder(
+      borderSide: BorderSide(color: AppColors.black),
+    ),
+    focusedBorder: const UnderlineInputBorder(
+      borderSide: BorderSide(color: AppColors.black, width: 1),
+    ),
+    disabledBorder: const UnderlineInputBorder(
+      borderSide: BorderSide(color: AppColors.grey),
+    ),
+  );
 }

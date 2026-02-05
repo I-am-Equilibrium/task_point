@@ -2,6 +2,7 @@ class TaskModel {
   String id;
   String listId;
   String? invoice;
+  String? utd;
   String? company;
   String? products;
   String? date;
@@ -18,6 +19,7 @@ class TaskModel {
     required this.listId,
     required this.order,
     this.invoice,
+    this.utd,
     this.company,
     this.products,
     this.date,
@@ -33,6 +35,7 @@ class TaskModel {
     String? id,
     String? listId,
     String? invoice,
+    String? utd,
     String? company,
     String? products,
     String? date,
@@ -48,6 +51,7 @@ class TaskModel {
       id: id ?? this.id,
       listId: listId ?? this.listId,
       invoice: invoice ?? this.invoice,
+      utd: utd ?? this.utd, // <-- 4.
       company: company ?? this.company,
       products: products ?? this.products,
       date: date ?? this.date,
@@ -63,6 +67,7 @@ class TaskModel {
 
   Map<String, dynamic> toJson() => {
     "invoice_number": invoice,
+    "utd": utd,
     "company_name": company,
     "products": products,
     "address": address,
@@ -80,6 +85,7 @@ class TaskModel {
     id: json["\$id"],
     listId: json["list_id"],
     invoice: json["invoice_number"],
+    utd: json["utd"],
     company: json["company_name"],
     products: json["products"],
     date: json["delivery_date"],

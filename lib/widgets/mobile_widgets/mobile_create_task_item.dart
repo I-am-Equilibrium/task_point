@@ -30,6 +30,7 @@ class MobileCreateTaskScreen extends StatefulWidget {
 
 class _MobileCreateTaskScreenState extends State<MobileCreateTaskScreen> {
   final TextEditingController _invoiceController = TextEditingController();
+  final TextEditingController _utdController = TextEditingController();
   final TextEditingController _companyController = TextEditingController();
   final TextEditingController _productsController = TextEditingController();
   final TextEditingController _dateController = TextEditingController();
@@ -492,6 +493,7 @@ class _MobileCreateTaskScreenState extends State<MobileCreateTaskScreen> {
       listId: widget.listId,
       order: newOrder,
       invoice: _invoiceController.text,
+      utd: _utdController.text,
       company: _companyController.text,
       products: _productsController.text,
       date: _selectedDate?.toIso8601String(),
@@ -555,12 +557,31 @@ class _MobileCreateTaskScreenState extends State<MobileCreateTaskScreen> {
                     color: widget.listColor,
                     topPadding: 30,
                   ),
-                  _buildUnderlinedTextField(
-                    controller: _invoiceController,
-                    hintText: "пример накладной: 11-11111",
-                    topPadding: 8,
-                    keyboardType: TextInputType.phone,
-                    inputFormatters: [InvoiceInputFormatter()],
+                  Padding(
+                    padding: const EdgeInsets.only(
+                      top: 8.0,
+                    ), // Небольшой отступ
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: _buildUnderlinedTextField(
+                            controller: _invoiceController,
+                            hintText: "Счет",
+                            keyboardType: TextInputType.number,
+                            inputFormatters: [InvoiceInputFormatter()],
+                          ),
+                        ),
+                        const SizedBox(width: 15),
+                        Expanded(
+                          child: _buildUnderlinedTextField(
+                            controller: _utdController,
+                            hintText: "упд",
+                            keyboardType: TextInputType.number,
+                            inputFormatters: [UtdInputFormatter()],
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                   _buildSectionLabel("Компания", topPadding: 10),
                   CompositedTransformTarget(
@@ -679,6 +700,33 @@ class InvoiceInputFormatter extends TextInputFormatter {
       newString += text[i];
       if (i == 1 && text.length > 2) {
         newString += '-';
+      }
+    }
+
+    return TextEditingValue(
+      text: newString,
+      selection: TextSelection.collapsed(offset: newString.length),
+    );
+  }
+}
+
+class UtdInputFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    final text = newValue.text
+        .replaceAll('/', '')
+        .replaceAll(RegExp(r'\D'), '');
+
+    if (text.length > 7) return oldValue;
+
+    String newString = '';
+    for (int i = 0; i < text.length; i++) {
+      newString += text[i];
+      if (i == 5 && text.length > 6) {
+        newString += '/';
       }
     }
 

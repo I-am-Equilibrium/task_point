@@ -6,6 +6,7 @@ import 'package:task_point/widgets/alarm_item.dart';
 import 'package:task_point/widgets/russian_calendar.dart';
 import 'package:task_point/services/appwrite_service.dart';
 import 'package:task_point/services/notifications_service.dart';
+import 'package:flutter/services.dart';
 
 class CreateTaskItem extends StatefulWidget {
   final VoidCallback onClose;
@@ -34,6 +35,7 @@ class _CreateTaskItemState extends State<CreateTaskItem> {
   bool _isSaveHover = false;
 
   final TextEditingController _invoiceController = TextEditingController();
+  final TextEditingController _utdController = TextEditingController();
   final TextEditingController _companyController = TextEditingController();
   final TextEditingController _productsController = TextEditingController();
   final TextEditingController _dateController = TextEditingController();
@@ -50,36 +52,6 @@ class _CreateTaskItemState extends State<CreateTaskItem> {
   DateTime? _selectedDate;
   DateTime _selectedReminderDate = DateTime.now();
   TimeOfDay _selectedReminderTime = TimeOfDay.now();
-
-  void _formatInvoiceNumber(String value) {
-    String digits = value.replaceAll(RegExp(r'[^0-9]'), '');
-
-    if (digits.length > 7) digits = digits.substring(0, 7);
-
-    if (digits.length <= 2) {
-      _invoiceController.value = TextEditingValue(
-        text: digits,
-        selection: TextSelection.collapsed(offset: digits.length),
-      );
-      return;
-    }
-
-    final prefix = digits.substring(0, 2);
-    final suffix = digits.substring(2);
-
-    String fixedSuffix = suffix;
-
-    if (fixedSuffix.length > 5) {
-      fixedSuffix = fixedSuffix.substring(0, 5);
-    }
-
-    String result = "$prefix-$fixedSuffix";
-
-    _invoiceController.value = TextEditingValue(
-      text: result,
-      selection: TextSelection.collapsed(offset: result.length),
-    );
-  }
 
   OverlayEntry? _calendarOverlay;
   OverlayEntry? _reminderOverlay;
@@ -358,6 +330,14 @@ class _CreateTaskItemState extends State<CreateTaskItem> {
     }
   }
 
+  Map<String, dynamic>? _getSelectedExecutorData() {
+    if (_selectedExecutorId == null) return null;
+    return _listParticipants.firstWhere(
+      (user) => user["id"] == _selectedExecutorId,
+      orElse: () => {},
+    );
+  }
+
   void _showExecutorOverlay() {
     _hideExecutorOverlay();
     if (_listParticipants.isEmpty) {
@@ -587,6 +567,7 @@ class _CreateTaskItemState extends State<CreateTaskItem> {
 
   void _resetFields() {
     _invoiceController.clear();
+    _utdController.clear();
     _companyController.clear();
     _productsController.clear();
     _dateController.clear();
@@ -606,6 +587,7 @@ class _CreateTaskItemState extends State<CreateTaskItem> {
 
   Future<void> _saveTask() async {
     if (_invoiceController.text.isEmpty &&
+        _utdController.text.isEmpty &&
         _companyController.text.isEmpty &&
         _productsController.text.isEmpty) {
       return;
@@ -639,6 +621,7 @@ class _CreateTaskItemState extends State<CreateTaskItem> {
       listId: widget.listId,
       order: newOrder,
       invoice: _invoiceController.text,
+      utd: _utdController.text,
       company: _companyController.text,
       products: _productsController.text,
       date: _selectedDate?.toIso8601String(),
@@ -652,7 +635,6 @@ class _CreateTaskItemState extends State<CreateTaskItem> {
 
     widget.onTaskCreated(savedTask);
 
-    /// ---- УВЕДОМЛЕНИЕ О НАЗНАЧЕНИИ ЗАДАЧИ ----
     if (_selectedExecutorId != null &&
         _selectedExecutorId!.isNotEmpty &&
         _selectedExecutorId != widget.currentUserId) {
@@ -764,53 +746,62 @@ class _CreateTaskItemState extends State<CreateTaskItem> {
 
                   const SizedBox(height: 20),
 
-                  const Padding(
-                    padding: EdgeInsets.only(left: 15),
-                    child: Text(
-                      "Номер Накладной",
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.black,
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 5),
-
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 15),
-                    child: TextField(
-                      controller: _invoiceController,
-                      onChanged: _formatInvoiceNumber,
-                      keyboardType: TextInputType.number,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                        color: AppColors.black,
-                      ),
-                      decoration: const InputDecoration(
-                        hintText: "пример: 11-11111",
-                        hintStyle: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w400,
-                          color: AppColors.grey,
-                        ),
-                        isDense: true,
-                        contentPadding: EdgeInsets.symmetric(vertical: 10),
-                        border: UnderlineInputBorder(
-                          borderSide: BorderSide(color: AppColors.black),
-                        ),
-                        enabledBorder: UnderlineInputBorder(
-                          borderSide: BorderSide(color: AppColors.black),
-                        ),
-                        focusedBorder: UnderlineInputBorder(
-                          borderSide: BorderSide(
-                            color: AppColors.black,
-                            width: 1,
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                "Счет",
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.black,
+                                ),
+                              ),
+                              TextField(
+                                controller: _invoiceController,
+                                inputFormatters: [InvoiceFormatter()],
+                                keyboardType: TextInputType.number,
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                                decoration: _inputDecoration("11111-11"),
+                              ),
+                            ],
                           ),
                         ),
-                      ),
+                        const SizedBox(width: 15),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                "УПД",
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.black,
+                                ),
+                              ),
+                              TextField(
+                                controller: _utdController,
+                                inputFormatters: [UtdFormatter()],
+                                keyboardType: TextInputType.number,
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                                decoration: _inputDecoration("123456/1"),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
                   ),
 
@@ -1114,12 +1105,54 @@ class _CreateTaskItemState extends State<CreateTaskItem> {
                           ),
                           prefixIcon: Padding(
                             padding: const EdgeInsets.all(10),
-                            child: Image.asset(
-                              "assets/icons/for_user.png",
-                              width: 18,
-                              height: 18,
-                              color: AppColors.grey,
-                            ),
+                            child: _selectedExecutorId == null
+                                ? Image.asset(
+                                    "assets/icons/for_user.png",
+                                    width: 18,
+                                    height: 18,
+                                    color: AppColors.grey,
+                                  )
+                                : (() {
+                                    final user = _getSelectedExecutorData();
+                                    final hasAvatar =
+                                        user != null &&
+                                        user["avatar_url"] != null &&
+                                        user["avatar_url"]
+                                            .toString()
+                                            .isNotEmpty;
+
+                                    return Container(
+                                      width: 28,
+                                      height: 28,
+                                      decoration: const BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        color: AppColors.skyBlue,
+                                      ),
+                                      child: CircleAvatar(
+                                        radius: 14,
+                                        backgroundColor: Colors.transparent,
+                                        backgroundImage: hasAvatar
+                                            ? NetworkImage(user["avatar_url"])
+                                            : null,
+                                        child: !hasAvatar && user != null
+                                            ? Text(
+                                                user["name"]
+                                                        .toString()
+                                                        .isNotEmpty
+                                                    ? user["name"]
+                                                          .toString()[0]
+                                                          .toUpperCase()
+                                                    : "",
+                                                style: const TextStyle(
+                                                  fontSize: 14,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: AppColors.black,
+                                                ),
+                                              )
+                                            : null,
+                                      ),
+                                    );
+                                  })(),
                           ),
                           suffixIcon: _executorController.text.isEmpty
                               ? null
@@ -1341,6 +1374,65 @@ class _CreateTaskItemState extends State<CreateTaskItem> {
           ),
         ],
       ),
+    );
+  }
+}
+
+InputDecoration _inputDecoration(String hint) {
+  return InputDecoration(
+    hintText: hint,
+    hintStyle: const TextStyle(fontSize: 14, color: AppColors.grey),
+    isDense: true,
+    contentPadding: const EdgeInsets.symmetric(vertical: 10),
+    enabledBorder: const UnderlineInputBorder(
+      borderSide: BorderSide(color: AppColors.black),
+    ),
+    focusedBorder: const UnderlineInputBorder(
+      borderSide: BorderSide(color: AppColors.black, width: 1),
+    ),
+  );
+}
+
+class InvoiceFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    String text = newValue.text.replaceAll(RegExp(r'\D'), '');
+    if (text.length > 7) text = text.substring(0, 7);
+
+    String newText = '';
+    for (int i = 0; i < text.length; i++) {
+      if (i == 5) newText += '-';
+      newText += text[i];
+    }
+
+    return TextEditingValue(
+      text: newText,
+      selection: TextSelection.collapsed(offset: newText.length),
+    );
+  }
+}
+
+class UtdFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    String text = newValue.text.replaceAll(RegExp(r'\D'), '');
+    if (text.length > 7) text = text.substring(0, 7);
+
+    String newText = '';
+    for (int i = 0; i < text.length; i++) {
+      if (i == 6) newText += '/'; // Ставим слэш после 6-й цифры
+      newText += text[i];
+    }
+
+    return TextEditingValue(
+      text: newText,
+      selection: TextSelection.collapsed(offset: newText.length),
     );
   }
 }

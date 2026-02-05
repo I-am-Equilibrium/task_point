@@ -788,6 +788,7 @@ class AppwriteService {
         documentId: task.id,
         data: {
           'invoice_number': task.invoice,
+          'utd': task.utd,
           'company_name': task.company,
           'products': task.products,
           'delivery_date': task.date,

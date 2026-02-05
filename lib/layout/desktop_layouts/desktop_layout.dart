@@ -844,25 +844,8 @@ class _DesktopLayoutState extends State<DesktopLayout> {
 
     setState(() {
       tasks = result.documents.map((doc) {
-        final data = Map<String, dynamic>.from(doc.data);
-        final json = {
-          '\$id': doc.$id,
-          'list_id': data['list_id'],
-          'invoice_number': data['invoice_number'],
-          'company_name': data['company_name'],
-          'products': data['products'],
-          'address': data['address'],
-          'delivery_date': data['delivery_date'],
-          'assigned_to': data['assigned_to'],
-          'reminder_time': data['reminder_time'],
-          'comments': data['comments'],
-          'is_done': data['is_done'] ?? false,
-          'is_important': data['is_important'] ?? false,
-          'order': data['order'],
-          '\$createdAt': doc.$createdAt,
-        };
-
-        final task = TaskModel.fromJson(json);
+        final data = {...doc.data, '\$id': doc.$id};
+        final task = TaskModel.fromJson(data);
         _taskCreatedAtMap[task.id] = DateTime.parse(doc.$createdAt);
         return task;
       }).toList();
@@ -882,26 +865,9 @@ class _DesktopLayoutState extends State<DesktopLayout> {
       );
 
       final loadedTasks = result.documents.map((doc) {
-        final data = Map<String, dynamic>.from(doc.data);
+        final Map<String, dynamic> data = {...doc.data, '\$id': doc.$id};
 
-        final json = {
-          '\$id': doc.$id,
-          'list_id': data['list_id'],
-          'invoice_number': data['invoice_number'],
-          'company_name': data['company_name'],
-          'products': data['products'],
-          'address': data['address'],
-          'delivery_date': data['delivery_date'],
-          'assigned_to': data['assigned_to'],
-          'reminder_time': data['reminder_time'],
-          'comments': data['comments'],
-          'is_done': data['is_done'] ?? false,
-          'is_important': data['is_important'] ?? false,
-          'order': data['order'],
-          '\$createdAt': doc.$createdAt,
-        };
-
-        return TaskModel.fromJson(json);
+        return TaskModel.fromJson(data);
       }).toList();
 
       final executorIds = loadedTasks
@@ -931,6 +897,8 @@ class _DesktopLayoutState extends State<DesktopLayout> {
   Widget build(BuildContext context) {
     final List<TaskModel> visibleTasks =
         (!_isListContextLoading && _isRoleLoaded) ? tasks : [];
+    final bool isPanelOpen = _openedTask != null || _isCreateTaskOpen;
+    final double dynamicRightPadding = isPanelOpen ? 300.0 : 0.0;
 
     final activeTasks = visibleTasks.where((t) => !t.isDone).toList();
     final completedTasks = visibleTasks.where((t) => t.isDone).toList();
@@ -1208,44 +1176,53 @@ class _DesktopLayoutState extends State<DesktopLayout> {
                                                 index: activeTasks.indexOf(
                                                   task,
                                                 ),
-                                                child: TaskCard(
-                                                  key: ValueKey(task.id),
-                                                  task: task,
-                                                  listColor:
-                                                      _selectedListColor ??
-                                                      AppColors.skyBlue,
-                                                  userLists: _listsForMove,
-                                                  onStatusChanged:
-                                                      _updateTaskStatus,
-                                                  onTap:
-                                                      (!_isListContextLoading &&
-                                                          _isRoleLoaded)
-                                                      ? () => _openTaskDetail(
-                                                          task,
-                                                        )
-                                                      : null,
-                                                  isAdmin: _isAdmin,
-                                                  onTaskDuplicated:
-                                                      _selectedListId ==
-                                                          'important'
-                                                      ? null
-                                                      : _duplicateTask,
-                                                  onTaskMoved:
-                                                      (_isOwner || _isAdmin)
-                                                      ? _moveTaskToList
-                                                      : null,
-                                                  isOwner: _isOwner,
-                                                  enableContextMenu:
-                                                      enableContextMenu,
-                                                  canToggleImportant:
-                                                      _selectedListId !=
-                                                          'important' &&
-                                                      _selectedListId !=
-                                                          'assigned',
-                                                  executorName:
-                                                      _usersCache[task
-                                                          .executor]?['name'] ??
-                                                      '',
+                                                child: AnimatedPadding(
+                                                  duration: const Duration(
+                                                    milliseconds: 200,
+                                                  ),
+                                                  curve: Curves.easeInOut,
+                                                  padding: EdgeInsets.only(
+                                                    right: dynamicRightPadding,
+                                                  ),
+                                                  child: TaskCard(
+                                                    key: ValueKey(task.id),
+                                                    task: task,
+                                                    listColor:
+                                                        _selectedListColor ??
+                                                        AppColors.skyBlue,
+                                                    userLists: _listsForMove,
+                                                    onStatusChanged:
+                                                        _updateTaskStatus,
+                                                    onTap:
+                                                        (!_isListContextLoading &&
+                                                            _isRoleLoaded)
+                                                        ? () => _openTaskDetail(
+                                                            task,
+                                                          )
+                                                        : null,
+                                                    isAdmin: _isAdmin,
+                                                    onTaskDuplicated:
+                                                        _selectedListId ==
+                                                            'important'
+                                                        ? null
+                                                        : _duplicateTask,
+                                                    onTaskMoved:
+                                                        (_isOwner || _isAdmin)
+                                                        ? _moveTaskToList
+                                                        : null,
+                                                    isOwner: _isOwner,
+                                                    enableContextMenu:
+                                                        enableContextMenu,
+                                                    canToggleImportant:
+                                                        _selectedListId !=
+                                                            'important' &&
+                                                        _selectedListId !=
+                                                            'assigned',
+                                                    executorName:
+                                                        _usersCache[task
+                                                            .executor]?['name'] ??
+                                                        '',
+                                                  ),
                                                 ),
                                               ),
                                             ),
@@ -1337,51 +1314,68 @@ class _DesktopLayoutState extends State<DesktopLayout> {
                                                                         child,
                                                                   ),
                                                                 ),
-                                                            child: TaskCard(
-                                                              key: ValueKey(
-                                                                task.id,
+                                                            child: AnimatedPadding(
+                                                              duration:
+                                                                  const Duration(
+                                                                    milliseconds:
+                                                                        200,
+                                                                  ),
+                                                              curve: Curves
+                                                                  .easeInOut,
+                                                              padding:
+                                                                  EdgeInsets.only(
+                                                                    right:
+                                                                        dynamicRightPadding,
+                                                                  ),
+                                                              child: TaskCard(
+                                                                key: ValueKey(
+                                                                  task.id,
+                                                                ),
+                                                                task: task,
+                                                                listColor:
+                                                                    _selectedListColor ??
+                                                                    AppColors
+                                                                        .skyBlue,
+                                                                isCompleted:
+                                                                    true,
+                                                                userLists:
+                                                                    _listsForMove,
+                                                                onStatusChanged:
+                                                                    _updateTaskStatus,
+                                                                onTap:
+                                                                    (!_isListContextLoading &&
+                                                                        _isRoleLoaded)
+                                                                    ? () =>
+                                                                          _openTaskDetail(
+                                                                            task,
+                                                                          )
+                                                                    : null,
+                                                                isAdmin:
+                                                                    _isAdmin,
+                                                                onTaskDuplicated:
+                                                                    _selectedListId ==
+                                                                        'important'
+                                                                    ? null
+                                                                    : _duplicateTask,
+                                                                onTaskMoved:
+                                                                    (_isOwner ||
+                                                                        _isAdmin)
+                                                                    ? _moveTaskToList
+                                                                    : null,
+                                                                isOwner:
+                                                                    _isOwner,
+                                                                enableContextMenu:
+                                                                    enableContextMenu,
+                                                                canToggleImportant:
+                                                                    _selectedListId !=
+                                                                        'important' &&
+                                                                    _selectedListId !=
+                                                                        'assigned',
+                                                                executorName:
+                                                                    _usersCache[task
+                                                                        .executor]?['name'] ??
+                                                                    '',
                                                               ),
-                                                              task: task,
-                                                              listColor:
-                                                                  _selectedListColor ??
-                                                                  AppColors
-                                                                      .skyBlue,
-                                                              isCompleted: true,
-                                                              userLists:
-                                                                  _listsForMove,
-                                                              onStatusChanged:
-                                                                  _updateTaskStatus,
-                                                              onTap:
-                                                                  (!_isListContextLoading &&
-                                                                      _isRoleLoaded)
-                                                                  ? () =>
-                                                                        _openTaskDetail(
-                                                                          task,
-                                                                        )
-                                                                  : null,
-                                                              isAdmin: _isAdmin,
-                                                              onTaskDuplicated:
-                                                                  _selectedListId ==
-                                                                      'important'
-                                                                  ? null
-                                                                  : _duplicateTask,
-                                                              onTaskMoved:
-                                                                  (_isOwner ||
-                                                                      _isAdmin)
-                                                                  ? _moveTaskToList
-                                                                  : null,
-                                                              isOwner: _isOwner,
-                                                              enableContextMenu:
-                                                                  enableContextMenu,
-                                                              canToggleImportant:
-                                                                  _selectedListId !=
-                                                                      'important' &&
-                                                                  _selectedListId !=
-                                                                      'assigned',
-                                                              executorName:
-                                                                  _usersCache[task
-                                                                      .executor]?['name'] ??
-                                                                  '',
                                                             ),
                                                           ),
                                                         )

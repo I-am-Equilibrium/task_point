@@ -596,7 +596,7 @@ class _MobileElementsItemState extends State<MobileElementsItem> {
           onAccept: (data) => _moveItem(data['data'], index),
           builder: (context, candidate, _) => AnimatedContainer(
             duration: const Duration(milliseconds: 200),
-            height: candidate.isNotEmpty ? 60 : 16,
+            height: candidate.isNotEmpty ? 60 : 4,
             margin: const EdgeInsets.symmetric(horizontal: 20),
             decoration: BoxDecoration(
               color: candidate.isNotEmpty
@@ -1007,7 +1007,7 @@ class _MobileElementsItemState extends State<MobileElementsItem> {
       onTap: () => _navigateToTasks(list['id'], list['name'], color),
       child: Container(
         width: double.infinity,
-        margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+        margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 2),
         padding: const EdgeInsets.only(
           left: 20,
           top: 14,
