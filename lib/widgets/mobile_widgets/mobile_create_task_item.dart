@@ -373,7 +373,8 @@ class _MobileCreateTaskScreenState extends State<MobileCreateTaskScreen> {
   Widget _buildIconTextField({
     required TextEditingController controller,
     required String hintText,
-    required String iconPath,
+    String? iconPath,
+    Widget? customPrefix,
     VoidCallback? onTap,
     required VoidCallback onClear,
     bool isFilled = false,
@@ -399,12 +400,16 @@ class _MobileCreateTaskScreenState extends State<MobileCreateTaskScreen> {
           ),
           prefixIcon: Padding(
             padding: const EdgeInsets.only(right: 5),
-            child: Image.asset(
-              'assets/icons/$iconPath',
-              width: 20,
-              height: 20,
-              color: isFilled ? AppColors.black : AppColors.grey,
-            ),
+            child:
+                customPrefix ??
+                (iconPath != null
+                    ? Image.asset(
+                        'assets/icons/$iconPath',
+                        width: 20,
+                        height: 20,
+                        color: isFilled ? AppColors.black : AppColors.grey,
+                      )
+                    : const SizedBox(width: 20)),
           ),
           prefixIconConstraints: const BoxConstraints(
             minWidth: 25,
@@ -526,6 +531,47 @@ class _MobileCreateTaskScreenState extends State<MobileCreateTaskScreen> {
 
   @override
   Widget build(BuildContext context) {
+    Widget? executorAvatar;
+    if (_selectedExecutorId != null) {
+      final selectedUser = _listParticipants.firstWhere(
+        (u) => u['id'] == _selectedExecutorId,
+        orElse: () => {},
+      );
+
+      if (selectedUser.isNotEmpty) {
+        final hasAvatar =
+            selectedUser['avatar_url'] != null &&
+            (selectedUser['avatar_url'] as String).isNotEmpty;
+
+        executorAvatar = Container(
+          width: 32,
+          height: 32,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: hasAvatar ? Colors.transparent : AppColors.skyBlue,
+            image: hasAvatar
+                ? DecorationImage(
+                    image: NetworkImage(selectedUser['avatar_url']),
+                    fit: BoxFit.cover,
+                  )
+                : null,
+          ),
+          child: !hasAvatar
+              ? Center(
+                  child: Text(
+                    (selectedUser['name'] as String)[0].toUpperCase(),
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.black,
+                    ),
+                  ),
+                )
+              : null,
+        );
+      }
+    }
+
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -558,9 +604,7 @@ class _MobileCreateTaskScreenState extends State<MobileCreateTaskScreen> {
                     topPadding: 30,
                   ),
                   Padding(
-                    padding: const EdgeInsets.only(
-                      top: 8.0,
-                    ), // Небольшой отступ
+                    padding: const EdgeInsets.only(top: 8.0),
                     child: Row(
                       children: [
                         Expanded(
@@ -625,6 +669,7 @@ class _MobileCreateTaskScreenState extends State<MobileCreateTaskScreen> {
                     controller: _executorController,
                     hintText: "Передать Исполнителю",
                     iconPath: "for_user.png",
+                    customPrefix: executorAvatar,
                     onTap: _showExecutorPopup,
                     onClear: () => setState(() {
                       _selectedExecutorId = null;

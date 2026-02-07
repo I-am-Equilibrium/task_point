@@ -840,6 +840,7 @@ class _MobileTasksScreenState extends State<MobileTasksScreen> {
                             );
                           }).toList(),
                         ],
+                        const SizedBox(height: 60),
                       ],
                     ),
               itemBuilder: (context, index) {

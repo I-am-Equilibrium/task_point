@@ -119,6 +119,41 @@ class _MobileReadTaskScreenState extends State<MobileReadTaskScreen> {
     }
   }
 
+  void _confirmDelete() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: AppColors.white,
+          title: const Text("Удаление задачи"),
+          content: const Text("Вы уверены, что хотите удалить эту задачу?"),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text(
+                "Отмена",
+                style: TextStyle(color: AppColors.grey),
+              ),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+                _deleteTask();
+              },
+              child: const Text(
+                "Удалить",
+                style: TextStyle(
+                  color: AppColors.red,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   Future<void> _loadCompanies() async {
     try {
       final user = await AppwriteService().getCurrentUser();
@@ -577,6 +612,53 @@ class _MobileReadTaskScreenState extends State<MobileReadTaskScreen> {
     }
   }
 
+  Widget? _buildExecutorAvatar() {
+    if (_selectedExecutorId == null || _selectedExecutorId!.isEmpty)
+      return null;
+
+    final participant = _listParticipants.firstWhere(
+      (u) => u['id'] == _selectedExecutorId,
+      orElse: () => {},
+    );
+
+    if (participant.isEmpty) return null;
+
+    final String name = participant['name'] ?? "";
+    final String? avatarUrl = participant['avatar_url'];
+
+    return Container(
+      width: 32,
+      height: 32,
+      decoration: const BoxDecoration(
+        shape: BoxShape.circle,
+        color: AppColors.skyBlue,
+      ),
+      child: ClipOval(
+        child: (avatarUrl != null && avatarUrl.isNotEmpty)
+            ? Image.network(
+                avatarUrl,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) =>
+                    _buildInitials(name),
+              )
+            : _buildInitials(name),
+      ),
+    );
+  }
+
+  Widget _buildInitials(String name) {
+    return Center(
+      child: Text(
+        name.isNotEmpty ? name[0].toUpperCase() : "?",
+        style: const TextStyle(
+          color: Colors.white,
+          fontWeight: FontWeight.bold,
+          fontSize: 16,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -697,8 +779,10 @@ class _MobileReadTaskScreenState extends State<MobileReadTaskScreen> {
                                 ),
                                 _buildUnderlinedTextField(
                                   controller: _utdController,
-                                  hintText: "№ УПД",
+                                  hintText: "111111/1",
                                   readOnly: !_isAdmin,
+                                  keyboardType: TextInputType.number,
+                                  inputFormatters: [UtdInputFormatter()],
                                 ),
                               ],
                             ),
@@ -752,6 +836,7 @@ class _MobileReadTaskScreenState extends State<MobileReadTaskScreen> {
                     controller: _executorController,
                     hintText: "Исполнитель",
                     iconPath: "for_user.png",
+                    customLeading: _buildExecutorAvatar(),
                     onTap: _isAdmin ? _showExecutorPopup : null,
                     onClear: () => setState(() {
                       _selectedExecutorId = null;
@@ -824,35 +909,6 @@ class _MobileReadTaskScreenState extends State<MobileReadTaskScreen> {
                       ),
                     ),
 
-                  const SizedBox(height: 12),
-                  if (_isAdmin)
-                    InkWell(
-                      onTap: _deleteTask,
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 20),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Image.asset(
-                              'assets/icons/delete.png',
-                              width: 24,
-                              height: 24,
-                              color: AppColors.red,
-                            ),
-                            const SizedBox(width: 8),
-                            const Text(
-                              "Удалить задачу",
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w500,
-                                color: AppColors.red,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-
                   const SizedBox(height: 100),
                 ],
               ),
@@ -861,27 +917,52 @@ class _MobileReadTaskScreenState extends State<MobileReadTaskScreen> {
           if (_isAdmin)
             Padding(
               padding: const EdgeInsets.only(left: 20, right: 20, bottom: 50),
-              child: SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: _updateTask,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: widget.listColor,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: SizedBox(
+                      height: 56,
+                      child: ElevatedButton(
+                        onPressed: _updateTask,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: widget.listColor,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          elevation: 0,
+                        ),
+                        child: const Text(
+                          "Сохранить",
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.white,
+                          ),
+                        ),
+                      ),
                     ),
-                    elevation: 0,
                   ),
-                  child: const Text(
-                    "Сохранить изменения",
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.white,
+                  const SizedBox(width: 12),
+                  GestureDetector(
+                    onTap: _confirmDelete,
+                    child: Container(
+                      width: 56,
+                      height: 56,
+                      decoration: BoxDecoration(
+                        color: AppColors.red,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Center(
+                        child: Image.asset(
+                          'assets/icons/delete.png',
+                          width: 32,
+                          height: 32,
+                          color: AppColors.white,
+                        ),
+                      ),
                     ),
                   ),
-                ),
+                ],
               ),
             ),
         ],
@@ -984,6 +1065,7 @@ class _MobileReadTaskScreenState extends State<MobileReadTaskScreen> {
     required TextEditingController controller,
     required String hintText,
     required String iconPath,
+    Widget? customLeading,
     VoidCallback? onTap,
     required VoidCallback onClear,
     bool isFilled = false,
@@ -994,8 +1076,9 @@ class _MobileReadTaskScreenState extends State<MobileReadTaskScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: TextField(
         controller: controller,
-        readOnly: true,
+        readOnly: readOnly,
         onTap: onTap,
+        textAlignVertical: TextAlignVertical.center,
         style: const TextStyle(
           fontSize: 16,
           fontWeight: FontWeight.w400,
@@ -1003,21 +1086,41 @@ class _MobileReadTaskScreenState extends State<MobileReadTaskScreen> {
         ),
         decoration: InputDecoration(
           hintText: hintText,
+          filled: false,
+          contentPadding: const EdgeInsets.symmetric(vertical: 15),
+          prefixIcon: Padding(
+            padding: const EdgeInsets.only(right: 12),
+            child: UnconstrainedBox(
+              child:
+                  customLeading ??
+                  Image.asset(
+                    'assets/icons/$iconPath',
+                    width: 24,
+                    height: 24,
+                    color: AppColors.grey,
+                  ),
+            ),
+          ),
+          prefixIconConstraints: const BoxConstraints(
+            minWidth: 40,
+            minHeight: 40,
+          ),
           suffixIcon: (showClearIcon && controller.text.isNotEmpty)
               ? GestureDetector(
                   onTap: onClear,
-                  child: Image.asset(
-                    'assets/icons/close.png',
-                    width: 20,
-                    height: 20,
-                    color: AppColors.black,
+                  child: UnconstrainedBox(
+                    child: Image.asset(
+                      'assets/icons/close.png',
+                      width: 20,
+                      height: 20,
+                      color: AppColors.black,
+                    ),
                   ),
                 )
               : null,
-
           suffixIconConstraints: const BoxConstraints(
-            minWidth: 20,
-            minHeight: 20,
+            minWidth: 40,
+            minHeight: 40,
           ),
           enabledBorder: const UnderlineInputBorder(
             borderSide: BorderSide(color: AppColors.black),
@@ -1094,6 +1197,31 @@ class InvoiceInputFormatter extends TextInputFormatter {
       if (i == 1 && text.length > 2) {
         newString += '-';
       }
+    }
+
+    return TextEditingValue(
+      text: newString,
+      selection: TextSelection.collapsed(offset: newString.length),
+    );
+  }
+}
+
+class UtdInputFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    final text = newValue.text.replaceAll(RegExp(r'[^0-9]'), '');
+
+    if (text.length > 7) return oldValue;
+
+    String newString = '';
+    for (int i = 0; i < text.length; i++) {
+      if (i == 6) {
+        newString += '/';
+      }
+      newString += text[i];
     }
 
     return TextEditingValue(
