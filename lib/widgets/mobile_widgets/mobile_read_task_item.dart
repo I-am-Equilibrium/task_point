@@ -768,25 +768,24 @@ class _MobileReadTaskScreenState extends State<MobileReadTaskScreen> {
                             ],
                           ),
                         ),
-                        if (_isAdmin || (_utdController.text.isNotEmpty))
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                _buildSectionLabel(
-                                  "УПД",
-                                  color: widget.listColor,
-                                ),
-                                _buildUnderlinedTextField(
-                                  controller: _utdController,
-                                  hintText: "111111/1",
-                                  readOnly: !_isAdmin,
-                                  keyboardType: TextInputType.number,
-                                  inputFormatters: [UtdInputFormatter()],
-                                ),
-                              ],
-                            ),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _buildSectionLabel(
+                                "УПД",
+                                color: widget.listColor,
+                              ),
+                              _buildUnderlinedTextField(
+                                controller: _utdController,
+                                hintText: "111111/1",
+                                readOnly: !_isAdmin,
+                                keyboardType: TextInputType.number,
+                                inputFormatters: [UtdInputFormatter()],
+                              ),
+                            ],
                           ),
+                        ),
                       ],
                     ),
                   ),

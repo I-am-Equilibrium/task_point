@@ -94,13 +94,19 @@ class MobileTaskCard extends StatelessWidget {
                 const SizedBox(width: 8),
                 GestureDetector(
                   onTap: onStatusToggle,
-                  child: Image.asset(
-                    task.isDone
-                        ? 'assets/icons/radio_button_confirm.png'
-                        : 'assets/icons/radio_button_unconfirm.png',
-                    width: task.isDone ? 40 : 30,
-                    height: task.isDone ? 40 : 30,
-                    color: AppColors.black,
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 600),
+                    curve: Curves.easeOut,
+                    width: 30,
+                    height: 30,
+                    alignment: Alignment.center,
+                    child: Image.asset(
+                      task.isDone
+                          ? 'assets/icons/radio_button_confirm.png'
+                          : 'assets/icons/radio_button_unconfirm.png',
+                      color: AppColors.black,
+                      fit: BoxFit.contain,
+                    ),
                   ),
                 ),
               ],
