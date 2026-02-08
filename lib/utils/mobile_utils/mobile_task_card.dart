@@ -10,6 +10,8 @@ class MobileTaskCard extends StatelessWidget {
   final VoidCallback? onStatusToggle;
   final VoidCallback? onFavoriteToggle;
   final bool isHighlighted;
+  final bool showListName;
+  final String taskListName;
 
   const MobileTaskCard({
     super.key,
@@ -20,20 +22,23 @@ class MobileTaskCard extends StatelessWidget {
     this.onStatusToggle,
     this.onFavoriteToggle,
     this.isHighlighted = false,
+    this.showListName = false,
+    this.taskListName = "",
   });
 
   @override
   Widget build(BuildContext context) {
     final topTextStyle = TextStyle(
-      fontSize: 16,
+      fontSize: 14,
       fontWeight: FontWeight.bold,
       color: listColor,
-      height: 20 / 16,
+      height: 1.0,
+      leadingDistribution: TextLeadingDistribution.even,
     );
 
     final secondaryHeaderStyle = TextStyle(
       fontSize: 14,
-      fontWeight: FontWeight.w600,
+      fontWeight: FontWeight.w500,
       color: listColor,
       height: 20 / 14,
     );
@@ -46,7 +51,12 @@ class MobileTaskCard extends StatelessWidget {
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeInOut,
         margin: const EdgeInsets.only(left: 20, right: 20, bottom: 5, top: 0),
-        padding: const EdgeInsets.only(left: 20, right: 20, top: 10, bottom: 8),
+        padding: const EdgeInsets.only(
+          left: 20,
+          right: 20,
+          top: 12,
+          bottom: 10,
+        ),
         decoration: BoxDecoration(
           color: AppColors.white,
           borderRadius: BorderRadius.circular(14),
@@ -72,6 +82,20 @@ class MobileTaskCard extends StatelessWidget {
             Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
+                if (showListName && taskListName.isNotEmpty) ...[
+                  Text(taskListName, style: topTextStyle),
+                  const SizedBox(width: 8),
+                  Container(
+                    width: 4,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: listColor.withOpacity(0.4),
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                ],
+
                 Text(task.invoice ?? "Без номера", style: topTextStyle),
                 if (hasUtd) ...[
                   const SizedBox(width: 6),
@@ -111,6 +135,7 @@ class MobileTaskCard extends StatelessWidget {
                 ),
               ],
             ),
+            SizedBox(height: 4),
 
             Row(
               crossAxisAlignment: CrossAxisAlignment.center,
@@ -152,7 +177,7 @@ class MobileTaskCard extends StatelessWidget {
                   "Адрес: ",
                   style: TextStyle(
                     fontSize: 14,
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w500,
                     color: listColor,
                   ),
                 ),

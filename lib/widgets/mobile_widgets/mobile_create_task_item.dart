@@ -737,8 +737,9 @@ class InvoiceInputFormatter extends TextInputFormatter {
     TextEditingValue oldValue,
     TextEditingValue newValue,
   ) {
-    final text = newValue.text.replaceAll('-', '');
-    if (text.length > 7) return oldValue;
+    final text = newValue.text.replaceAll(RegExp(r'\D'), '');
+
+    if (text.length > 6) return oldValue;
 
     String newString = '';
     for (int i = 0; i < text.length; i++) {

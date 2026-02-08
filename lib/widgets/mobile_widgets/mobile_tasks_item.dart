@@ -818,12 +818,20 @@ class _MobileTasksScreenState extends State<MobileTasksScreen> {
                           ...completedTasks.map((task) {
                             final String nameOfExecutor =
                                 _usersCache[task.executor]?['name'] ?? '';
+                            final originalList = _userLists.firstWhere(
+                              (l) => l['id'] == task.listId,
+                              orElse: () => {},
+                            );
+                            final String taskListName =
+                                originalList['name'] ?? "";
                             return MobileTaskCard(
                               key: ValueKey("done_${task.id}"),
                               task: task,
                               listColor: widget.listColor,
                               executorName: nameOfExecutor,
                               isHighlighted: _highlightedTaskId == task.id,
+                              showListName: widget.listId == 'assigned',
+                              taskListName: taskListName,
                               onTap: _isRoleLoaded
                                   ? () => _openTaskDetail(task)
                                   : null,
@@ -847,6 +855,11 @@ class _MobileTasksScreenState extends State<MobileTasksScreen> {
                 final task = activeTasks[index];
                 final String nameOfExecutor =
                     _usersCache[task.executor]?['name'] ?? '';
+                final originalList = _userLists.firstWhere(
+                  (l) => l['id'] == task.listId,
+                  orElse: () => {},
+                );
+                final String taskListName = originalList['name'] ?? "";
 
                 return ReorderableDelayedDragStartListener(
                   key: ValueKey(task.id),
@@ -857,6 +870,8 @@ class _MobileTasksScreenState extends State<MobileTasksScreen> {
                     listColor: widget.listColor,
                     executorName: nameOfExecutor,
                     isHighlighted: _highlightedTaskId == task.id,
+                    showListName: widget.listId == 'assigned',
+                    taskListName: taskListName,
                     onTap: _isRoleLoaded ? () => _openTaskDetail(task) : null,
                     onStatusToggle: () =>
                         _updateTaskStatus(task.copyWith(isDone: !task.isDone)),

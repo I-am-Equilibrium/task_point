@@ -77,26 +77,18 @@ class ReadTaskItemState extends State<ReadTaskItem> {
   void _formatInvoiceNumber(String value) {
     String digits = value.replaceAll(RegExp(r'[^0-9]'), '');
 
-    if (digits.length > 7) digits = digits.substring(0, 7);
+    if (digits.length > 6) {
+      digits = digits.substring(0, 6);
+    }
 
+    String result = "";
     if (digits.length <= 2) {
-      _invoiceController.value = TextEditingValue(
-        text: digits,
-        selection: TextSelection.collapsed(offset: digits.length),
-      );
-      return;
+      result = digits;
+    } else {
+      final prefix = digits.substring(0, 2);
+      final suffix = digits.substring(2);
+      result = "$prefix-$suffix";
     }
-
-    final prefix = digits.substring(0, 2);
-    final suffix = digits.substring(2);
-
-    String fixedSuffix = suffix;
-
-    if (fixedSuffix.length > 5) {
-      fixedSuffix = fixedSuffix.substring(0, 5);
-    }
-
-    String result = "$prefix-$fixedSuffix";
 
     _invoiceController.value = TextEditingValue(
       text: result,
@@ -1080,7 +1072,7 @@ class ReadTaskItemState extends State<ReadTaskItem> {
                                   fontWeight: FontWeight.w500,
                                   color: AppColors.black,
                                 ),
-                                decoration: _inputDecoration("11111-11"),
+                                decoration: _inputDecoration("11-1111"),
                               ),
                             ),
                           ],

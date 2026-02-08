@@ -1190,9 +1190,16 @@ class _DesktopLayoutState extends State<DesktopLayout> {
                                                     listColor:
                                                         _selectedListColor ??
                                                         AppColors.skyBlue,
-                                                    userLists: _listsForMove,
+                                                    userLists:
+                                                        _selectedListId ==
+                                                            'assigned'
+                                                        ? _userLists
+                                                        : _listsForMove,
                                                     onStatusChanged:
                                                         _updateTaskStatus,
+                                                    isAssignedToMeView:
+                                                        _selectedListId ==
+                                                        'assigned',
                                                     onTap:
                                                         (!_isListContextLoading &&
                                                             _isRoleLoaded)
@@ -1338,8 +1345,14 @@ class _DesktopLayoutState extends State<DesktopLayout> {
                                                                         .skyBlue,
                                                                 isCompleted:
                                                                     true,
+                                                                isAssignedToMeView:
+                                                                    _selectedListId ==
+                                                                    'assigned',
                                                                 userLists:
-                                                                    _listsForMove,
+                                                                    _selectedListId ==
+                                                                        'assigned'
+                                                                    ? _userLists
+                                                                    : _listsForMove,
                                                                 onStatusChanged:
                                                                     _updateTaskStatus,
                                                                 onTap:

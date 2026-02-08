@@ -19,6 +19,7 @@ class TaskCard extends StatefulWidget {
   final VoidCallback? onTaskActionCompleted;
   final Function(TaskModel)? onTaskDuplicated;
   final Function(TaskModel, String)? onTaskMoved;
+  final bool isAssignedToMeView;
   final bool isOwner;
   final bool isAdmin;
   final String? executorName;
@@ -34,6 +35,7 @@ class TaskCard extends StatefulWidget {
     required this.executorName,
     required this.enableContextMenu,
     required this.canToggleImportant,
+    this.isAssignedToMeView = false,
     this.isCompleted = false,
     this.onStatusChanged,
     this.onTap,
@@ -151,6 +153,11 @@ class _TaskCardState extends State<TaskCard> {
   Widget build(BuildContext context) {
     final bool canEditImportant =
         widget.canToggleImportant && (widget.isOwner || widget.isAdmin);
+    final listData = widget.userLists.firstWhere(
+      (l) => (l['id'] ?? l['\$id']) == widget.task.listId,
+      orElse: () => {},
+    );
+    final String taskListName = listData['name'] ?? "";
 
     return Listener(
       onPointerDown: (event) {
@@ -207,6 +214,8 @@ class _TaskCardState extends State<TaskCard> {
                           listColor: widget.listColor,
                           isCompleted: widget.isCompleted,
                           isFavorite: isFavorite,
+                          taskListName: taskListName,
+                          showListName: widget.isAssignedToMeView,
                           canEditImportant: canEditImportant,
                           onFavoriteToggle: canEditImportant
                               ? _toggleFavorite
@@ -271,6 +280,8 @@ class _TaskHeader extends StatelessWidget {
   final bool isFavorite;
   final bool canEditImportant;
   final VoidCallback? onFavoriteToggle;
+  final String taskListName;
+  final bool showListName;
 
   const _TaskHeader({
     required this.task,
@@ -278,6 +289,8 @@ class _TaskHeader extends StatelessWidget {
     required this.isCompleted,
     required this.isFavorite,
     required this.canEditImportant,
+    required this.taskListName,
+    required this.showListName,
     this.onFavoriteToggle,
   });
 
@@ -285,34 +298,54 @@ class _TaskHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final TextStyle numberStyle = TextStyle(
       fontSize: 14,
-      fontWeight: FontWeight.w600,
+      fontWeight: FontWeight.w700,
       color: listColor,
+      height: 1.0,
+      leadingDistribution: TextLeadingDistribution.even,
       decoration: isCompleted ? TextDecoration.lineThrough : null,
     );
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
+        if (showListName && taskListName.isNotEmpty) ...[
+          Text(taskListName, style: numberStyle.copyWith(fontSize: 12)),
+          const SizedBox(width: 8),
+
+          Container(
+            width: 3,
+            height: 3,
+            decoration: BoxDecoration(
+              color: listColor.withOpacity(0.5),
+              shape: BoxShape.circle,
+            ),
+          ),
+          const SizedBox(width: 8),
+        ],
+
         Text(task.invoice ?? "", style: numberStyle),
 
         if ((task.utd ?? "").isNotEmpty) ...[
-          const SizedBox(width: 10),
+          const SizedBox(width: 6),
           Text("-", style: numberStyle),
-          const SizedBox(width: 10),
+          const SizedBox(width: 6),
           Text(task.utd!, style: numberStyle),
         ],
 
         const SizedBox(width: 12),
+
         Text(
           "Товары:",
           style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w600,
             color: AppColors.grey,
+            height: 1.0,
             decoration: isCompleted ? TextDecoration.lineThrough : null,
           ),
         ),
         const SizedBox(width: 6),
+
         Expanded(
           child: Text(
             task.products ?? "",
@@ -321,10 +354,12 @@ class _TaskHeader extends StatelessWidget {
               fontSize: 12,
               fontWeight: FontWeight.w500,
               color: AppColors.black,
+              height: 1.0,
               decoration: isCompleted ? TextDecoration.lineThrough : null,
             ),
           ),
         ),
+
         const SizedBox(width: 5),
         _FavoriteStar(
           isFavorite: isFavorite,

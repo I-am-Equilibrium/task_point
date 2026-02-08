@@ -770,7 +770,7 @@ class _CreateTaskItemState extends State<CreateTaskItem> {
                                   fontSize: 14,
                                   fontWeight: FontWeight.w500,
                                 ),
-                                decoration: _inputDecoration("11111-11"),
+                                decoration: _inputDecoration("12-3456"),
                               ),
                             ],
                           ),
@@ -1400,11 +1400,17 @@ class InvoiceFormatter extends TextInputFormatter {
     TextEditingValue newValue,
   ) {
     String text = newValue.text.replaceAll(RegExp(r'\D'), '');
-    if (text.length > 7) text = text.substring(0, 7);
+
+    if (text.length > 6) {
+      text = text.substring(0, 6);
+    }
 
     String newText = '';
+
     for (int i = 0; i < text.length; i++) {
-      if (i == 5) newText += '-';
+      if (i == 2) {
+        newText += '-';
+      }
       newText += text[i];
     }
 
@@ -1426,7 +1432,7 @@ class UtdFormatter extends TextInputFormatter {
 
     String newText = '';
     for (int i = 0; i < text.length; i++) {
-      if (i == 6) newText += '/'; // Ставим слэш после 6-й цифры
+      if (i == 6) newText += '/';
       newText += text[i];
     }
 
