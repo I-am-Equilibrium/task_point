@@ -74,6 +74,30 @@ class ReadTaskItemState extends State<ReadTaskItem> {
   String? _executorName;
   String? _executorAvatarUrl;
 
+  Color _getUserColor(String name) {
+    if (name.isEmpty) return AppColors.grey;
+
+    final List<Color> allowedColors = [
+      AppColors.green,
+      AppColors.skyBlue,
+      AppColors.lavendar,
+      AppColors.cheese,
+      AppColors.red,
+    ];
+
+    final int index = name.hashCode.abs() % allowedColors.length;
+    return allowedColors[index];
+  }
+
+  String _getInitials(String name) {
+    if (name.isEmpty) return "?";
+    final parts = name.trim().split(RegExp(r'\s+'));
+    if (parts.length > 1) {
+      return (parts[0][0] + parts[1][0]).toUpperCase();
+    }
+    return parts[0][0].toUpperCase();
+  }
+
   void _formatInvoiceNumber(String value) {
     String digits = value.replaceAll(RegExp(r'[^0-9]'), '');
 
@@ -256,13 +280,19 @@ class ReadTaskItemState extends State<ReadTaskItem> {
                               itemCount: _listParticipants.length,
                               itemBuilder: (_, index) {
                                 final user = _listParticipants[index];
+                                final String userId = user["id"].toString();
+                                final String userName = user["name"].toString();
+                                final String? avatarUrl = user["avatar_url"];
+                                final bool hasAvatar =
+                                    avatarUrl != null && avatarUrl.isNotEmpty;
+
                                 return InkWell(
                                   onTap: () {
                                     setState(() {
-                                      _selectedExecutorId = user["id"];
-                                      _executorName = user["name"];
-                                      _executorAvatarUrl = user["avatar_url"];
-                                      _executorController.text = user["name"];
+                                      _selectedExecutorId = userId;
+                                      _executorName = userName;
+                                      _executorAvatarUrl = avatarUrl;
+                                      _executorController.text = userName;
                                     });
                                     _hideExecutorOverlay();
                                   },
@@ -275,28 +305,26 @@ class ReadTaskItemState extends State<ReadTaskItem> {
                                       children: [
                                         CircleAvatar(
                                           radius: 14,
-                                          backgroundImage:
-                                              (user["avatar_url"] != null &&
-                                                  user["avatar_url"]
-                                                      .toString()
-                                                      .isNotEmpty)
-                                              ? NetworkImage(user["avatar_url"])
+                                          backgroundColor: hasAvatar
+                                              ? Colors.transparent
+                                              : _getUserColor(userName),
+                                          backgroundImage: hasAvatar
+                                              ? NetworkImage(avatarUrl)
                                               : null,
-                                          child:
-                                              (user["avatar_url"] == null ||
-                                                  user["avatar_url"]
-                                                      .toString()
-                                                      .isEmpty)
+                                          child: !hasAvatar
                                               ? Text(
-                                                  user["name"]
-                                                      .toString()[0]
-                                                      .toUpperCase(),
+                                                  _getInitials(userName),
+                                                  style: const TextStyle(
+                                                    fontSize: 12,
+                                                    fontWeight: FontWeight.bold,
+                                                    color: AppColors.black,
+                                                  ),
                                                 )
                                               : null,
                                         ),
                                         const SizedBox(width: 10),
                                         Text(
-                                          user["name"],
+                                          userName,
                                           style: const TextStyle(
                                             fontSize: 14,
                                             fontWeight: FontWeight.w500,
@@ -1412,9 +1440,13 @@ class ReadTaskItemState extends State<ReadTaskItem> {
                                 : Container(
                                     width: 28,
                                     height: 28,
-                                    decoration: const BoxDecoration(
+                                    decoration: BoxDecoration(
                                       shape: BoxShape.circle,
-                                      color: AppColors.skyBlue,
+                                      color:
+                                          (_executorAvatarUrl == null ||
+                                              _executorAvatarUrl!.isEmpty)
+                                          ? _getUserColor(_executorName ?? "")
+                                          : Colors.transparent,
                                     ),
                                     child: CircleAvatar(
                                       radius: 14,
@@ -1430,12 +1462,9 @@ class ReadTaskItemState extends State<ReadTaskItem> {
                                                       .isEmpty) &&
                                               _executorName != null
                                           ? Text(
-                                              _executorName!.isNotEmpty
-                                                  ? _executorName![0]
-                                                        .toUpperCase()
-                                                  : "",
+                                              _getInitials(_executorName!),
                                               style: const TextStyle(
-                                                fontSize: 14,
+                                                fontSize: 12,
                                                 fontWeight: FontWeight.bold,
                                                 color: AppColors.black,
                                               ),

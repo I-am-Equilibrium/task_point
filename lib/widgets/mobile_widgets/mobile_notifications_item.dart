@@ -27,6 +27,23 @@ class _MobileNotificationsItemState extends State<MobileNotificationsItem> {
     _fetchNotifications();
   }
 
+  @override
+  void dispose() {
+    _markAllRead();
+    super.dispose();
+  }
+
+  Future<void> _markAllRead() async {
+    final user = authState.currentUser;
+    if (user == null) return;
+
+    try {
+      await _notificationsService.markAllAsRead(user.$id);
+    } catch (e) {
+      debugPrint("Ошибка при пометке уведомлений прочитанными: $e");
+    }
+  }
+
   Future<void> _fetchNotifications() async {
     final user = authState.currentUser;
     if (user == null) return;

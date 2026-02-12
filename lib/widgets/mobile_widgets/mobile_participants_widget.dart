@@ -38,7 +38,6 @@ class _MobileParticipantsWidgetState extends State<MobileParticipantsWidget> {
   late String _currentUserId;
   String? _currentUserAvatarUrl;
 
-  // Геттеры для прав доступа
   bool get _isCurrentUserOwner => _currentUserId == _ownerId;
   bool get _isCurrentUserAdmin => _adminIds.contains(_currentUserId);
 
@@ -57,6 +56,7 @@ class _MobileParticipantsWidgetState extends State<MobileParticipantsWidget> {
   ];
 
   Color _getFallbackColor(String name) {
+    if (name.isEmpty) return fallbackColors[0];
     final index = name.hashCode.abs() % fallbackColors.length;
     return fallbackColors[index];
   }
@@ -117,8 +117,6 @@ class _MobileParticipantsWidgetState extends State<MobileParticipantsWidget> {
     }
   }
 
-  // --- ЛОГИКА ДЕЙСТВИЙ (ADD, REMOVE, PROMOTE, DEMOTE, LEAVE) ---
-
   Future<void> _addMember(Map<String, dynamic> member) async {
     final memberId = member['id'];
     final alreadyAdded = _addedMembers.any((m) => m['id'] == memberId);
@@ -158,8 +156,7 @@ class _MobileParticipantsWidgetState extends State<MobileParticipantsWidget> {
 
   Future<void> _leaveList() async {
     try {
-      if (_isCurrentUserOwner)
-        return; // Владелец не может выйти просто так (обычно)
+      if (_isCurrentUserOwner) return;
 
       if (_isCurrentUserAdmin) {
         await AppwriteService().removeAdminFromList(
@@ -178,7 +175,7 @@ class _MobileParticipantsWidgetState extends State<MobileParticipantsWidget> {
       }
 
       widget.onLeaveList?.call();
-      widget.onClose(); // Закрываем экран
+      widget.onClose();
     } catch (e) {
       debugPrint('Ошибка при выходе из списка: $e');
     }
@@ -234,7 +231,7 @@ class _MobileParticipantsWidgetState extends State<MobileParticipantsWidget> {
         _adminIds.remove(userId);
       });
       widget.onMemberAdded?.call();
-      if (mounted) Navigator.pop(context); // Закрыть BottomSheet
+      if (mounted) Navigator.pop(context);
     } catch (e) {
       debugPrint("Ошибка разжалования админа: $e");
     }
@@ -282,19 +279,14 @@ class _MobileParticipantsWidgetState extends State<MobileParticipantsWidget> {
     }
   }
 
-  // --- UI КОМПОНЕНТЫ ---
-
   void _showMemberActionSheet({
     required Map<String, dynamic> member,
     required bool isAdmin,
   }) {
-    // Проверка прав на открытие меню
     if (!_isCurrentUserOwner && !_isCurrentUserAdmin) return;
-    // Админ не может управлять Владельцем или другими Админами (обычно)
-    // Владелец может управлять всеми.
+
     if (!_isCurrentUserOwner && (isAdmin || member['id'] == _ownerId)) return;
 
-    // Не открываем меню для самого себя
     if (member['id'] == _currentUserId) return;
 
     showModalBottomSheet(
@@ -320,7 +312,6 @@ class _MobileParticipantsWidgetState extends State<MobileParticipantsWidget> {
                 ),
                 const SizedBox(height: 15),
 
-                // Кнопка назначения/снятия админа (только для Владельца)
                 if (_isCurrentUserOwner)
                   ListTile(
                     leading: Image.asset(
@@ -346,7 +337,6 @@ class _MobileParticipantsWidgetState extends State<MobileParticipantsWidget> {
                     },
                   ),
 
-                // Кнопка удаления (Владелец удаляет всех, Админ удаляет обычных участников)
                 if ((_isCurrentUserOwner && member['id'] != _ownerId) ||
                     (_isCurrentUserAdmin && !isAdmin))
                   ListTile(
@@ -384,13 +374,14 @@ class _MobileParticipantsWidgetState extends State<MobileParticipantsWidget> {
     final avatar = member['avatar_url'];
     final userId = member['id'];
 
-    // Определяем, можем ли мы управлять этим юзером
     final canManage =
         (_isCurrentUserOwner && userId != _currentUserId) ||
         (_isCurrentUserAdmin &&
             !isAdmin &&
             !isOwner &&
             userId != _currentUserId);
+
+    final hasAvatar = avatar != null && avatar.toString().isNotEmpty;
 
     return InkWell(
       onTap: canManage
@@ -400,37 +391,22 @@ class _MobileParticipantsWidgetState extends State<MobileParticipantsWidget> {
         padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 20),
         child: Row(
           children: [
-            // Аватар
-            avatar != null
-                ? ClipRRect(
-                    borderRadius: BorderRadius.circular(20),
-                    child: Image.network(
-                      avatar,
-                      width: 40,
-                      height: 40,
-                      fit: BoxFit.cover,
-                    ),
-                  )
-                : Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: _getFallbackColor(name),
-                      shape: BoxShape.circle,
-                    ),
-                    alignment: Alignment.center,
-                    child: Text(
-                      name.isNotEmpty ? name[0].toUpperCase() : '?',
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w900,
-                        color: AppColors.black,
-                      ),
-                    ),
-                  ),
-            const SizedBox(width: 12),
+            if (hasAvatar)
+              ClipRRect(
+                borderRadius: BorderRadius.circular(20),
+                child: Image.network(
+                  avatar,
+                  width: 40,
+                  height: 40,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) =>
+                      _buildFallbackAvatar(name),
+                ),
+              )
+            else
+              _buildFallbackAvatar(name),
 
-            // Имя и роль
+            const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -446,20 +422,17 @@ class _MobileParticipantsWidgetState extends State<MobileParticipantsWidget> {
                   if (isOwner)
                     const Text(
                       "Владелец",
-                      // Владелец теперь SkyBlue
                       style: TextStyle(fontSize: 12, color: AppColors.skyBlue),
                     )
                   else if (isAdmin)
                     const Text(
                       "Администратор",
-                      // Администратор теперь серый
                       style: TextStyle(fontSize: 12, color: Colors.grey),
                     ),
                 ],
               ),
             ),
 
-            // Иконка "опции", если можно управлять
             if (canManage) const Icon(Icons.more_vert, color: Colors.grey),
           ],
         ),
@@ -471,39 +444,29 @@ class _MobileParticipantsWidgetState extends State<MobileParticipantsWidget> {
     final name = member['name'] ?? 'Пользователь';
     final avatar = member['avatar_url'];
 
+    final hasAvatar = avatar != null && avatar.toString().isNotEmpty;
+
     return InkWell(
       onTap: () => _addMember(member),
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 20),
         child: Row(
           children: [
-            avatar != null
-                ? ClipRRect(
-                    borderRadius: BorderRadius.circular(20),
-                    child: Image.network(
-                      avatar,
-                      width: 40,
-                      height: 40,
-                      fit: BoxFit.cover,
-                    ),
-                  )
-                : Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: _getFallbackColor(name),
-                      shape: BoxShape.circle,
-                    ),
-                    alignment: Alignment.center,
-                    child: Text(
-                      name.isNotEmpty ? name[0].toUpperCase() : "?",
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w900,
-                        color: AppColors.black,
-                      ),
-                    ),
-                  ),
+            if (hasAvatar)
+              ClipRRect(
+                borderRadius: BorderRadius.circular(20),
+                child: Image.network(
+                  avatar,
+                  width: 40,
+                  height: 40,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) =>
+                      _buildFallbackAvatar(name),
+                ),
+              )
+            else
+              _buildFallbackAvatar(name),
+
             const SizedBox(width: 12),
             Expanded(
               child: Text(
@@ -524,6 +487,27 @@ class _MobileParticipantsWidgetState extends State<MobileParticipantsWidget> {
               child: const Icon(Icons.add, color: AppColors.black, size: 20),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFallbackAvatar(String name) {
+    return Container(
+      width: 40,
+      height: 40,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: _getFallbackColor(name),
+      ),
+      child: Center(
+        child: Text(
+          name.isNotEmpty ? name[0].toUpperCase() : '?',
+          style: const TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: AppColors.black,
+          ),
         ),
       ),
     );
@@ -591,7 +575,6 @@ class _MobileParticipantsWidgetState extends State<MobileParticipantsWidget> {
                         children: [
                           const SizedBox(height: 10),
 
-                          // Владелец
                           _buildUserRow(
                             member: {
                               'id': _ownerId,
@@ -602,17 +585,14 @@ class _MobileParticipantsWidgetState extends State<MobileParticipantsWidget> {
                             isOwner: true,
                           ),
 
-                          // Админы
                           ...admins.map(
                             (m) => _buildUserRow(member: m, isAdmin: true),
                           ),
 
-                          // Обычные участники
                           ...members.map(
                             (m) => _buildUserRow(member: m, isAdmin: false),
                           ),
 
-                          // Секция добавления новых
                           if (remainingMembers.isNotEmpty) ...[
                             const Padding(
                               padding: EdgeInsets.fromLTRB(20, 20, 20, 10),

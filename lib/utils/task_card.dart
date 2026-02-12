@@ -22,7 +22,10 @@ class TaskCard extends StatefulWidget {
   final bool isAssignedToMeView;
   final bool isOwner;
   final bool isAdmin;
+
   final String? executorName;
+  final String? executorAvatarUrl;
+
   final bool enableContextMenu;
   final bool canToggleImportant;
   final bool isPanelOpen;
@@ -33,6 +36,7 @@ class TaskCard extends StatefulWidget {
     required this.listColor,
     required this.userLists,
     required this.executorName,
+    this.executorAvatarUrl,
     required this.enableContextMenu,
     required this.canToggleImportant,
     this.isAssignedToMeView = false,
@@ -97,15 +101,12 @@ class _TaskCardState extends State<TaskCard> {
             },
             userLists: widget.userLists,
             task: widget.task,
-
             isOwner: widget.isOwner,
-
             onMove: widget.onTaskMoved != null
                 ? (listId) async {
                     await widget.onTaskMoved!(widget.task, listId);
                   }
                 : null,
-
             onDuplicate: (listId) async {
               final cleanedCopy = widget.task.copyWith(listId: listId);
               widget.onTaskDuplicated!(cleanedCopy);
@@ -168,7 +169,6 @@ class _TaskCardState extends State<TaskCard> {
           _showContextMenu(context, event.position);
         }
       },
-
       child: GestureDetector(
         onTap: widget.onTap,
         child: MouseRegion(
@@ -225,6 +225,8 @@ class _TaskCardState extends State<TaskCard> {
                         _TaskDetails(
                           task: widget.task,
                           executorName: widget.executorName,
+                          // Передаем URL аватарки внутрь деталей
+                          executorAvatarUrl: widget.executorAvatarUrl,
                         ),
                       ],
                     ),
@@ -311,7 +313,6 @@ class _TaskHeader extends StatelessWidget {
         if (showListName && taskListName.isNotEmpty) ...[
           Text(taskListName, style: numberStyle.copyWith(fontSize: 12)),
           const SizedBox(width: 8),
-
           Container(
             width: 3,
             height: 3,
@@ -322,18 +323,14 @@ class _TaskHeader extends StatelessWidget {
           ),
           const SizedBox(width: 8),
         ],
-
         Text(task.invoice ?? "", style: numberStyle),
-
         if ((task.utd ?? "").isNotEmpty) ...[
           const SizedBox(width: 6),
           Text("-", style: numberStyle),
           const SizedBox(width: 6),
           Text(task.utd!, style: numberStyle),
         ],
-
         const SizedBox(width: 12),
-
         Text(
           "Товары:",
           style: TextStyle(
@@ -345,7 +342,6 @@ class _TaskHeader extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 6),
-
         Expanded(
           child: Text(
             task.products ?? "",
@@ -359,7 +355,6 @@ class _TaskHeader extends StatelessWidget {
             ),
           ),
         ),
-
         const SizedBox(width: 5),
         _FavoriteStar(
           isFavorite: isFavorite,
@@ -375,8 +370,13 @@ class _TaskHeader extends StatelessWidget {
 class _TaskDetails extends StatelessWidget {
   final TaskModel task;
   final String? executorName;
+  final String? executorAvatarUrl;
 
-  const _TaskDetails({required this.task, this.executorName});
+  const _TaskDetails({
+    required this.task,
+    this.executorName,
+    this.executorAvatarUrl,
+  });
 
   String _formatDate(String? dateStr) {
     if (dateStr == null || dateStr.isEmpty) return '';
@@ -396,24 +396,63 @@ class _TaskDetails extends StatelessWidget {
     }
   }
 
-  Widget _buildAvatar(String? name) {
-    final String firstLetter = (name != null && name.isNotEmpty)
-        ? name[0].toUpperCase()
-        : "?";
+  Color _getAvatarColor(String name) {
+    if (name.isEmpty) return AppColors.grey;
+
+    final List<Color> allowedColors = [
+      AppColors.green,
+      AppColors.skyBlue,
+      AppColors.lavendar,
+      AppColors.cheese,
+      AppColors.red,
+    ];
+
+    final int index = name.hashCode.abs() % allowedColors.length;
+    return allowedColors[index];
+  }
+
+  String _getInitials(String name) {
+    if (name.isEmpty) return "?";
+
+    final parts = name.trim().split(RegExp(r'\s+'));
+    if (parts.length > 1) {
+      return (parts[0][0] + parts[1][0]).toUpperCase();
+    }
+    return parts[0][0].toUpperCase();
+  }
+
+  Widget _buildAvatar(String? name, String? avatarUrl) {
+    const double size = 28.0;
+
+    if (avatarUrl != null && avatarUrl.isNotEmpty) {
+      return Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          border: Border.all(color: Colors.grey.withOpacity(0.2), width: 1),
+          image: DecorationImage(
+            image: NetworkImage(avatarUrl),
+            fit: BoxFit.cover,
+          ),
+        ),
+      );
+    }
+
+    final String displayName = name ?? "";
+    final Color bgColor = _getAvatarColor(displayName);
+    final String initials = _getInitials(displayName);
 
     return Container(
-      width: 22,
-      height: 22,
-      decoration: const BoxDecoration(
-        color: AppColors.skyBlue,
-        shape: BoxShape.circle,
-      ),
+      width: size,
+      height: size,
+      decoration: BoxDecoration(color: bgColor, shape: BoxShape.circle),
       child: Center(
         child: Text(
-          firstLetter,
+          initials,
           style: const TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
+            fontSize: 11,
+            fontWeight: FontWeight.w700,
             color: AppColors.black,
           ),
         ),
@@ -443,7 +482,7 @@ class _TaskDetails extends StatelessWidget {
           const SizedBox(width: 8),
           Container(width: 1, height: 20, color: AppColors.black),
           const SizedBox(width: 10),
-          _buildAvatar(executorName),
+          _buildAvatar(executorName, executorAvatarUrl),
           const SizedBox(width: 8),
           Text(
             executorName!,

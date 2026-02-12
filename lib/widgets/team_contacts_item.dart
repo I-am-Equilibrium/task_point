@@ -21,6 +21,14 @@ class TeamContactsItem extends StatefulWidget {
 
 class _TeamContactsItemState extends State<TeamContactsItem>
     with TickerProviderStateMixin {
+  final List<Color> _avatarColors = [
+    AppColors.green,
+    AppColors.skyBlue,
+    AppColors.lavendar,
+    AppColors.cheese,
+    AppColors.red,
+  ];
+
   bool _isHoverClose = false;
   bool _isHoverAdd = false;
   bool _isHoverBack = false;
@@ -74,6 +82,68 @@ class _TeamContactsItemState extends State<TeamContactsItem>
     );
   }
 
+  Color _getAvatarColor(String? userId) {
+    if (userId == null || userId.isEmpty) return AppColors.skyBlue;
+    final int index = userId.hashCode.abs() % _avatarColors.length;
+    return _avatarColors[index];
+  }
+
+  Widget _buildAvatar(Map<String, dynamic> user, {bool showLetter = true}) {
+    final String? rawUrl = user['avatar_url']?.toString();
+    final bool hasAvatar =
+        rawUrl != null &&
+        rawUrl.isNotEmpty &&
+        rawUrl != 'null' &&
+        rawUrl.contains('http');
+
+    final String userId =
+        user['\$id']?.toString() ?? user['id']?.toString() ?? "";
+    final String name = user['name'] ?? "User";
+    final String firstLetter = name.isNotEmpty ? name[0].toUpperCase() : "?";
+
+    if (hasAvatar) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(40),
+        child: Image.network(
+          rawUrl,
+          width: 40,
+          height: 40,
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) =>
+              _buildPlaceholder(userId, firstLetter, showLetter),
+          loadingBuilder: (context, child, loadingProgress) {
+            if (loadingProgress == null) return child;
+            return _buildPlaceholder(userId, firstLetter, showLetter);
+          },
+        ),
+      );
+    } else {
+      return _buildPlaceholder(userId, firstLetter, showLetter);
+    }
+  }
+
+  Widget _buildPlaceholder(String userId, String letter, bool showLetter) {
+    return Container(
+      width: 40,
+      height: 40,
+      decoration: BoxDecoration(
+        color: _getAvatarColor(userId),
+        shape: BoxShape.circle,
+      ),
+      alignment: Alignment.center,
+      child: showLetter
+          ? Text(
+              letter,
+              style: const TextStyle(
+                color: AppColors.black,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            )
+          : null,
+    );
+  }
+
   Future<void> _loadTeamContacts() async {
     final service = AppwriteService();
     final current = await service.getCurrentUser();
@@ -87,7 +157,6 @@ class _TeamContactsItemState extends State<TeamContactsItem>
       );
 
       final contactsIds = List<String>.from(doc.data['team_contacts'] ?? []);
-
       final List<Map<String, dynamic>> loaded = [];
 
       for (final id in contactsIds) {
@@ -95,9 +164,7 @@ class _TeamContactsItemState extends State<TeamContactsItem>
         if (fullUser == null) continue;
 
         final assignedCount = await service.getAssignedTasksCount(id);
-
         fullUser['tasks_assigned_count'] = assignedCount;
-
         loaded.add(fullUser);
       }
 
@@ -282,7 +349,6 @@ class _TeamContactsItemState extends State<TeamContactsItem>
             200,
             80,
           );
-
           final RenderBox box = context.findRenderObject() as RenderBox;
           final Offset localOffset = box.globalToLocal(event.position);
 
@@ -294,7 +360,6 @@ class _TeamContactsItemState extends State<TeamContactsItem>
           }
         }
       },
-
       child: Container(
         width: 300,
         height: panelHeight,
@@ -324,11 +389,11 @@ class _TeamContactsItemState extends State<TeamContactsItem>
                   child: _isSearchMode
                       ? _buildSearchResults()
                       : (_teamContacts.isEmpty
-                            ? Center(
+                            ? const Center(
                                 child: Text(
                                   "Контакты отсутствуют",
                                   textAlign: TextAlign.center,
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     color: AppColors.grey,
                                     fontSize: 15,
                                   ),
@@ -351,7 +416,6 @@ class _TeamContactsItemState extends State<TeamContactsItem>
                 ),
               ],
             ),
-
             Positioned(
               right: 15,
               bottom: 15,
@@ -360,9 +424,7 @@ class _TeamContactsItemState extends State<TeamContactsItem>
                 onExit: (_) => setState(() => _isHoverAdd = false),
                 cursor: SystemMouseCursors.click,
                 child: GestureDetector(
-                  onTap: () {
-                    setState(() => _isSearchMode = true);
-                  },
+                  onTap: () => setState(() => _isSearchMode = true),
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 180),
                     width: 45,
@@ -385,7 +447,6 @@ class _TeamContactsItemState extends State<TeamContactsItem>
                 ),
               ),
             ),
-
             if (_contextMenuPosition != null && _contextMenuUserId != null)
               Positioned(
                 left: _contextMenuPosition!.dx,
@@ -635,33 +696,16 @@ class _TeamContactsItemState extends State<TeamContactsItem>
       ),
       child: Row(
         children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(40),
-            child:
-                (user['avatar_url'] != null &&
-                    user['avatar_url'].toString().isNotEmpty)
-                ? Image.network(
-                    user['avatar_url'],
-                    width: 40,
-                    height: 40,
-                    fit: BoxFit.cover,
-                  )
-                : Image.asset(
-                    "assets/icons/user_placeholder.png",
-                    width: 40,
-                    height: 40,
-                    fit: BoxFit.cover,
-                  ),
-          ),
-          const SizedBox(width: 5),
+          _buildAvatar(user, showLetter: true),
+          const SizedBox(width: 10),
           Expanded(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  user['name'],
-                  style: TextStyle(
+                  user['name'] ?? "",
+                  style: const TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
                     color: AppColors.black,
@@ -669,8 +713,8 @@ class _TeamContactsItemState extends State<TeamContactsItem>
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  user['email'],
-                  style: TextStyle(
+                  user['email'] ?? "",
+                  style: const TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w500,
                     color: AppColors.grey,
@@ -832,7 +876,7 @@ class _TeamContactsItemState extends State<TeamContactsItem>
 
   Widget _buildContactCardContent(Map<String, dynamic> user, int index) {
     return Container(
-      padding: const EdgeInsets.only(left: 15, top: 15, right: 15, bottom: 15),
+      padding: const EdgeInsets.all(15),
       decoration: BoxDecoration(
         color: AppColors.white,
         borderRadius: BorderRadius.circular(15),
@@ -850,26 +894,8 @@ class _TeamContactsItemState extends State<TeamContactsItem>
           Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(40),
-                child:
-                    (user['avatar_url'] != null &&
-                        user['avatar_url'].toString().isNotEmpty)
-                    ? Image.network(
-                        user['avatar_url'],
-                        width: 40,
-                        height: 40,
-                        fit: BoxFit.cover,
-                      )
-                    : Image.asset(
-                        "assets/icons/user_placeholder.png",
-                        width: 40,
-                        height: 40,
-                        fit: BoxFit.cover,
-                      ),
-              ),
+              _buildAvatar(user, showLetter: true),
               const SizedBox(width: 10),
-
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -896,16 +922,12 @@ class _TeamContactsItemState extends State<TeamContactsItem>
               ),
             ],
           ),
-
           const SizedBox(height: 8),
-
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 5),
             child: Container(height: 1, color: AppColors.paper),
           ),
-
           const SizedBox(height: 8),
-
           Row(
             children: [
               const Text(

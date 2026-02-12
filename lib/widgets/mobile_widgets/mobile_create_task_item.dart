@@ -48,6 +48,14 @@ class _MobileCreateTaskScreenState extends State<MobileCreateTaskScreen> {
   List<String> _allCompanies = [];
   List<String> _filteredCompanies = [];
 
+  final List<Color> _avatarColors = [
+    AppColors.green,
+    AppColors.skyBlue,
+    AppColors.lavendar,
+    AppColors.cheese,
+    AppColors.red,
+  ];
+
   @override
   void initState() {
     super.initState();
@@ -57,6 +65,46 @@ class _MobileCreateTaskScreenState extends State<MobileCreateTaskScreen> {
     _addressController.addListener(() => setState(() {}));
     _executorController.addListener(() => setState(() {}));
     _reminderController.addListener(() => setState(() {}));
+  }
+
+  Color _getUserColor(String userId) {
+    if (userId.isEmpty) return AppColors.grey;
+    final int index = userId.hashCode.abs() % _avatarColors.length;
+    return _avatarColors[index];
+  }
+
+  Widget _buildUserAvatar(Map<String, dynamic> user, {double size = 32}) {
+    final String? avatarUrl = user['avatar_url'];
+    final String name = user['name'] ?? " ";
+    final String firstLetter = name.isNotEmpty ? name[0].toUpperCase() : "?";
+    final String userId = user['id'] ?? "";
+    final Color bgColor = _getUserColor(userId);
+
+    bool hasAvatar = avatarUrl != null && avatarUrl.isNotEmpty;
+
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: bgColor,
+        image: hasAvatar
+            ? DecorationImage(image: NetworkImage(avatarUrl), fit: BoxFit.cover)
+            : null,
+      ),
+      child: !hasAvatar
+          ? Center(
+              child: Text(
+                firstLetter,
+                style: TextStyle(
+                  fontSize: size * 0.45,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.black,
+                ),
+              ),
+            )
+          : null,
+    );
   }
 
   Future<void> _loadCompanies() async {
@@ -399,7 +447,7 @@ class _MobileCreateTaskScreenState extends State<MobileCreateTaskScreen> {
             color: AppColors.grey,
           ),
           prefixIcon: Padding(
-            padding: const EdgeInsets.only(right: 5),
+            padding: const EdgeInsets.only(right: 10),
             child:
                 customPrefix ??
                 (iconPath != null
@@ -412,7 +460,7 @@ class _MobileCreateTaskScreenState extends State<MobileCreateTaskScreen> {
                     : const SizedBox(width: 20)),
           ),
           prefixIconConstraints: const BoxConstraints(
-            minWidth: 25,
+            minWidth: 35,
             minHeight: 20,
           ),
           suffixIcon: controller.text.isNotEmpty
@@ -459,14 +507,7 @@ class _MobileCreateTaskScreenState extends State<MobileCreateTaskScreen> {
             itemBuilder: (context, index) {
               final user = _listParticipants[index];
               return ListTile(
-                leading: CircleAvatar(
-                  backgroundImage: user['avatar_url']?.isNotEmpty == true
-                      ? NetworkImage(user['avatar_url'])
-                      : null,
-                  child: user['avatar_url']?.isEmpty == true
-                      ? Text(user['name'][0])
-                      : null,
-                ),
+                leading: _buildUserAvatar(user, size: 40),
                 title: Text(user['name']),
                 onTap: () {
                   setState(() {
@@ -539,36 +580,7 @@ class _MobileCreateTaskScreenState extends State<MobileCreateTaskScreen> {
       );
 
       if (selectedUser.isNotEmpty) {
-        final hasAvatar =
-            selectedUser['avatar_url'] != null &&
-            (selectedUser['avatar_url'] as String).isNotEmpty;
-
-        executorAvatar = Container(
-          width: 32,
-          height: 32,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: hasAvatar ? Colors.transparent : AppColors.skyBlue,
-            image: hasAvatar
-                ? DecorationImage(
-                    image: NetworkImage(selectedUser['avatar_url']),
-                    fit: BoxFit.cover,
-                  )
-                : null,
-          ),
-          child: !hasAvatar
-              ? Center(
-                  child: Text(
-                    (selectedUser['name'] as String)[0].toUpperCase(),
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.black,
-                    ),
-                  ),
-                )
-              : null,
-        );
+        executorAvatar = _buildUserAvatar(selectedUser, size: 28);
       }
     }
 

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:math';
 import 'package:task_point/constants/colors.dart';
 import 'package:intl/intl.dart';
 import 'package:task_point/services/task_model.dart';
@@ -279,6 +280,14 @@ class _CreateTaskItemState extends State<CreateTaskItem> {
 
   Future<void> _loadParticipants() async {
     try {
+      final List<Color> randomColors = [
+        AppColors.green,
+        AppColors.skyBlue,
+        AppColors.lavendar,
+        AppColors.cheese,
+        AppColors.red,
+      ];
+
       final listDoc = await AppwriteService().databases.getDocument(
         databaseId: AppwriteService.databaseId,
         collectionId: AppwriteService.listsCollectionId,
@@ -301,10 +310,19 @@ class _CreateTaskItemState extends State<CreateTaskItem> {
       for (var id in allUserIds) {
         final user = await AppwriteService().fetchFullUser(id);
         if (user != null) {
+          Color userColor;
+          if (user["avatar_url"] == null ||
+              user["avatar_url"].toString().isEmpty) {
+            userColor = randomColors[Random().nextInt(randomColors.length)];
+          } else {
+            userColor = AppColors.skyBlue;
+          }
+
           loaded.add({
             "id": user["id"],
             "name": user["name"],
             "avatar_url": user["avatar_url"],
+            "color": userColor,
           });
         }
       }
@@ -312,13 +330,10 @@ class _CreateTaskItemState extends State<CreateTaskItem> {
       loaded.sort((a, b) {
         if (a["id"] == ownerId) return -1;
         if (b["id"] == ownerId) return 1;
-
         final aIsAdmin = adminsRaw.contains(a["id"]);
         final bIsAdmin = adminsRaw.contains(b["id"]);
-
         if (aIsAdmin && !bIsAdmin) return -1;
         if (!aIsAdmin && bIsAdmin) return 1;
-
         return 0;
       });
 
@@ -379,6 +394,7 @@ class _CreateTaskItemState extends State<CreateTaskItem> {
                               itemCount: _listParticipants.length,
                               itemBuilder: (_, index) {
                                 final user = _listParticipants[index];
+                                final avatarColor = user["color"] as Color;
                                 return InkWell(
                                   onTap: () {
                                     _executorController.text = user["name"];
@@ -395,6 +411,7 @@ class _CreateTaskItemState extends State<CreateTaskItem> {
                                       children: [
                                         CircleAvatar(
                                           radius: 14,
+                                          backgroundColor: avatarColor,
                                           backgroundImage:
                                               (user["avatar_url"] != null &&
                                                   user["avatar_url"]
@@ -411,6 +428,11 @@ class _CreateTaskItemState extends State<CreateTaskItem> {
                                                   user["name"]
                                                       .toString()[0]
                                                       .toUpperCase(),
+                                                  style: const TextStyle(
+                                                    fontSize: 14,
+                                                    fontWeight: FontWeight.bold,
+                                                    color: AppColors.black,
+                                                  ),
                                                 )
                                               : null,
                                         ),
@@ -1121,12 +1143,17 @@ class _CreateTaskItemState extends State<CreateTaskItem> {
                                             .toString()
                                             .isNotEmpty;
 
+                                    final assignedColor =
+                                        (user != null && user["color"] != null)
+                                        ? user["color"] as Color
+                                        : AppColors.skyBlue;
+
                                     return Container(
                                       width: 28,
                                       height: 28,
-                                      decoration: const BoxDecoration(
+                                      decoration: BoxDecoration(
                                         shape: BoxShape.circle,
-                                        color: AppColors.skyBlue,
+                                        color: assignedColor,
                                       ),
                                       child: CircleAvatar(
                                         radius: 14,
@@ -1144,7 +1171,7 @@ class _CreateTaskItemState extends State<CreateTaskItem> {
                                                           .toUpperCase()
                                                     : "",
                                                 style: const TextStyle(
-                                                  fontSize: 14,
+                                                  fontSize: 12,
                                                   fontWeight: FontWeight.bold,
                                                   color: AppColors.black,
                                                 ),

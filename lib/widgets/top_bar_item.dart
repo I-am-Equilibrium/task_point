@@ -17,7 +17,8 @@ class TopBarItem extends StatefulWidget {
   final VoidCallback onToggleSidebar;
   final List<TaskModel> Function() getAllTasks;
   final void Function(String taskId) scrollToTask;
-  final void Function(String listId) openList;
+  final void Function(String listId, {String? taskId}) openList;
+  final void Function(String taskId) onShowTask;
 
   const TopBarItem({
     super.key,
@@ -25,6 +26,7 @@ class TopBarItem extends StatefulWidget {
     required this.getAllTasks,
     required this.scrollToTask,
     required this.openList,
+    required this.onShowTask,
   });
 
   @override
@@ -62,6 +64,19 @@ class _TopBarItemState extends State<TopBarItem>
   OverlayEntry? _popupEntry;
   OverlayEntry? _teamEntry;
   OverlayEntry? _notificationsEntry;
+
+  final List<Color> _avatarColors = [
+    AppColors.green,
+    AppColors.skyBlue,
+    AppColors.lavendar,
+    AppColors.cheese,
+    AppColors.red,
+  ];
+
+  Color _getAvatarColor(String? input) {
+    if (input == null || input.isEmpty) return AppColors.grey;
+    return _avatarColors[input.hashCode % _avatarColors.length];
+  }
 
   @override
   void initState() {
@@ -160,18 +175,38 @@ class _TopBarItemState extends State<TopBarItem>
     if (user == null) return;
 
     final allTasks = await _appwriteService.getAllAccessibleTasks(user.$id);
-
     final q = query.toLowerCase();
     final List<_SearchResult> found = [];
 
     for (final t in allTasks) {
+      String? executorName;
+      String? executorAvatar;
+      bool matchPerformer = false;
+
+      if (t.executor != null && t.executor!.isNotEmpty) {
+        try {
+          final userDoc = await _appwriteService.databases.getDocument(
+            databaseId: AppwriteService.databaseId,
+            collectionId: AppwriteService.usersCollectionId,
+            documentId: t.executor!,
+          );
+          executorName = userDoc.data['name'];
+          executorAvatar = userDoc.data['avatar_url'];
+
+          if (executorName != null && executorName.toLowerCase().contains(q)) {
+            matchPerformer = true;
+          }
+        } catch (e) {
+          print("Ошибка загрузки данных исполнителя: $e");
+        }
+      }
+
       bool matchInvoice = t.invoice?.toLowerCase().contains(q) ?? false;
       bool matchCompany = t.company?.toLowerCase().contains(q) ?? false;
       bool matchProduct = t.products?.toLowerCase().contains(q) ?? false;
 
-      if (matchInvoice || matchCompany || matchProduct) {
+      if (matchInvoice || matchCompany || matchProduct || matchPerformer) {
         String listName = "Без списка";
-
         if (t.listId != null && t.listId!.isNotEmpty) {
           try {
             final listDoc = await _appwriteService.databases.getDocument(
@@ -183,16 +218,24 @@ class _TopBarItemState extends State<TopBarItem>
           } catch (_) {}
         }
 
+        String displayMatchedText = "";
+        if (matchInvoice)
+          displayMatchedText = "Счет: ${t.invoice}";
+        else if (matchCompany)
+          displayMatchedText = "Компания: ${t.company}";
+        else if (matchPerformer)
+          displayMatchedText = "Исполнитель: $executorName";
+        else
+          displayMatchedText = "Товары: ${t.products}";
+
         found.add(
           _SearchResult(
             taskId: t.id,
             listId: t.listId ?? "",
             listName: listName,
-            matchedText: matchInvoice
-                ? t.invoice!
-                : matchCompany
-                ? t.company!
-                : t.products ?? "",
+            matchedText: displayMatchedText,
+            executorName: executorName,
+            executorAvatarUrl: executorAvatar,
           ),
         );
       }
@@ -236,40 +279,86 @@ class _TopBarItemState extends State<TopBarItem>
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: _results.map((r) {
+                      bool hasExecutor = r.executorName != null;
+                      bool hasAvatar =
+                          r.executorAvatarUrl != null &&
+                          r.executorAvatarUrl!.isNotEmpty;
+
                       return GestureDetector(
                         onTap: () {
                           _closeSearchOverlay();
-
                           if (r.listId.isNotEmpty) {
-                            widget.openList(r.listId);
-
-                            Future.delayed(
-                              const Duration(milliseconds: 200),
-                              () {
-                                widget.scrollToTask(r.taskId);
-                              },
-                            );
+                            widget.openList(r.listId, taskId: r.taskId);
                           } else {
                             widget.scrollToTask(r.taskId);
+                            widget.onShowTask(r.taskId);
                           }
                         },
-
                         child: Padding(
-                          padding: const EdgeInsets.only(bottom: 10),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.center,
                             children: [
-                              Text(
-                                "Список: ${r.listName}",
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 14,
+                              Container(
+                                width: 36,
+                                height: 36,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: hasExecutor
+                                      ? _getAvatarColor(r.executorName)
+                                      : AppColors.lightGrey.withOpacity(0.3),
+                                  image: hasAvatar
+                                      ? DecorationImage(
+                                          image: NetworkImage(
+                                            r.executorAvatarUrl!,
+                                          ),
+                                          fit: BoxFit.cover,
+                                        )
+                                      : null,
                                 ),
+                                child: !hasAvatar
+                                    ? Center(
+                                        child: hasExecutor
+                                            ? Text(
+                                                r.executorName![0]
+                                                    .toUpperCase(),
+                                                style: const TextStyle(
+                                                  color: AppColors.black,
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: 14,
+                                                ),
+                                              )
+                                            : const Icon(
+                                                Icons.person,
+                                                size: 20,
+                                                color: AppColors.grey,
+                                              ),
+                                      )
+                                    : null,
                               ),
-                              const SizedBox(height: 2),
-                              Text(
-                                r.matchedText,
-                                style: const TextStyle(fontSize: 12),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      "Список: ${r.listName}",
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 13,
+                                        color: AppColors.grey,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      r.matchedText,
+                                      style: const TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ],
                           ),
@@ -930,11 +1019,15 @@ class _SearchResult {
   final String listId;
   final String listName;
   final String matchedText;
+  final String? executorName;
+  final String? executorAvatarUrl;
 
   _SearchResult({
     required this.taskId,
     required this.listId,
     required this.listName,
     required this.matchedText,
+    this.executorName,
+    this.executorAvatarUrl,
   });
 }

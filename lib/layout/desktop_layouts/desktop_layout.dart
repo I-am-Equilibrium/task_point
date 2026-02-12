@@ -130,6 +130,32 @@ class _DesktopLayoutState extends State<DesktopLayout> {
     }
   }
 
+  Future<void> _onShowTaskRequested(String taskId) async {
+    try {
+      TaskModel? task;
+      try {
+        task = tasks.firstWhere((t) => t.id == taskId);
+      } catch (_) {
+        task = null;
+      }
+
+      if (task == null) {
+        final doc = await AppwriteService().databases.getDocument(
+          databaseId: AppwriteService.databaseId,
+          collectionId: AppwriteService.tasksCollectionId,
+          documentId: taskId,
+        );
+        task = TaskModel.fromJson({...doc.data, '\$id': doc.$id});
+      }
+
+      if (mounted && task != null) {
+        _openTaskDetail(task);
+      }
+    } catch (e) {
+      print("Ошибка при попытке открыть задачу: $e");
+    }
+  }
+
   Future<void> _loadUserLists() async {
     try {
       final user = await AppwriteService().account.get();
@@ -403,8 +429,17 @@ class _DesktopLayoutState extends State<DesktopLayout> {
 
   void _openTaskDetail(TaskModel task) {
     if (_isListContextLoading || !_isRoleLoaded) return;
+
     setState(() {
-      _openedTask = task;
+      _openedTask = null;
+      _isCreateTaskOpen = false;
+    });
+
+    Future.microtask(() {
+      if (!mounted) return;
+      setState(() {
+        _openedTask = task;
+      });
     });
   }
 
@@ -448,9 +483,25 @@ class _DesktopLayoutState extends State<DesktopLayout> {
 
     if (taskId != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        _scrollToTask(taskId);
-        _pendingScrollTaskId = null;
+        _checkTasksLoadedAndOpen(taskId);
       });
+    }
+  }
+
+  void _checkTasksLoadedAndOpen(String taskId) {
+    if (_isListContextLoading) {
+      Future.delayed(const Duration(milliseconds: 100), () {
+        if (mounted) _checkTasksLoadedAndOpen(taskId);
+      });
+      return;
+    }
+
+    if (tasks.any((t) => t.id == taskId)) {
+      _scrollToTask(taskId);
+      _onShowTaskRequested(taskId);
+      _pendingScrollTaskId = null;
+    } else {
+      _onShowTaskRequested(taskId);
     }
   }
 
@@ -920,6 +971,7 @@ class _DesktopLayoutState extends State<DesktopLayout> {
             getAllTasks: () => tasks,
             scrollToTask: _scrollToTask,
             openList: _openList,
+            onShowTask: _onShowTaskRequested,
           ),
 
           Expanded(
@@ -1229,6 +1281,9 @@ class _DesktopLayoutState extends State<DesktopLayout> {
                                                         _usersCache[task
                                                             .executor]?['name'] ??
                                                         '',
+                                                    executorAvatarUrl:
+                                                        _usersCache[task
+                                                            .executor]?['avatar_url'],
                                                   ),
                                                 ),
                                               ),
@@ -1388,6 +1443,9 @@ class _DesktopLayoutState extends State<DesktopLayout> {
                                                                     _usersCache[task
                                                                         .executor]?['name'] ??
                                                                     '',
+                                                                executorAvatarUrl:
+                                                                    _usersCache[task
+                                                                        .executor]?['avatar_url'],
                                                               ),
                                                             ),
                                                           ),
@@ -1571,6 +1629,7 @@ class _DesktopLayoutState extends State<DesktopLayout> {
                               ),
 
                               child: ReadTaskItem(
+                                key: ValueKey(_openedTask!.id),
                                 editingTask: _openedTask!,
                                 listId: _selectedListId ?? "",
                                 listColor:

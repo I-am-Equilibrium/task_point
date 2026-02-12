@@ -45,6 +45,18 @@ class _MobileReadTaskScreenState extends State<MobileReadTaskScreen> {
   late TextEditingController _reminderController;
   late TextEditingController _commentController;
 
+  final List<Color> _avatarColors = [
+    AppColors.green,
+    AppColors.skyBlue,
+    AppColors.lavendar,
+    AppColors.cheese,
+    AppColors.red,
+  ];
+
+  Color _getAvatarColor(String userId) {
+    return _avatarColors[userId.hashCode.abs() % _avatarColors.length];
+  }
+
   bool _isAdmin = false;
 
   DateTime? _selectedDate;
@@ -625,29 +637,29 @@ class _MobileReadTaskScreenState extends State<MobileReadTaskScreen> {
 
     final String name = participant['name'] ?? "";
     final String? avatarUrl = participant['avatar_url'];
+    final Color avatarBgColor = _getAvatarColor(_selectedExecutorId!);
 
     return Container(
       width: 32,
       height: 32,
-      decoration: const BoxDecoration(
-        shape: BoxShape.circle,
-        color: AppColors.skyBlue,
-      ),
+      decoration: BoxDecoration(shape: BoxShape.circle, color: avatarBgColor),
       child: ClipOval(
         child: (avatarUrl != null && avatarUrl.isNotEmpty)
             ? Image.network(
                 avatarUrl,
                 fit: BoxFit.cover,
                 errorBuilder: (context, error, stackTrace) =>
-                    _buildInitials(name),
+                    _buildInitials(name, avatarBgColor),
               )
-            : _buildInitials(name),
+            : _buildInitials(name, avatarBgColor),
       ),
     );
   }
 
-  Widget _buildInitials(String name) {
-    return Center(
+  Widget _buildInitials(String name, Color backgroundColor) {
+    return Container(
+      color: backgroundColor,
+      alignment: Alignment.center,
       child: Text(
         name.isNotEmpty ? name[0].toUpperCase() : "?",
         style: const TextStyle(
@@ -1155,20 +1167,30 @@ class _MobileReadTaskScreenState extends State<MobileReadTaskScreen> {
             itemCount: _listParticipants.length,
             itemBuilder: (context, index) {
               final user = _listParticipants[index];
+              final String userId = user['id'] ?? "";
+              final String userName = user['name'] ?? "";
+              final String? avatarUrl = user['avatar_url'];
+
+              final Color userColor = _getAvatarColor(userId);
+
               return ListTile(
                 leading: CircleAvatar(
-                  backgroundImage: user['avatar_url']?.isNotEmpty == true
-                      ? NetworkImage(user['avatar_url'])
+                  backgroundColor: userColor,
+                  backgroundImage: (avatarUrl != null && avatarUrl.isNotEmpty)
+                      ? NetworkImage(avatarUrl)
                       : null,
-                  child: user['avatar_url']?.isEmpty == true
-                      ? Text(user['name'][0])
+                  child: (avatarUrl == null || avatarUrl.isEmpty)
+                      ? Text(
+                          userName.isNotEmpty ? userName[0].toUpperCase() : "?",
+                          style: const TextStyle(color: Colors.white),
+                        )
                       : null,
                 ),
-                title: Text(user['name']),
+                title: Text(userName),
                 onTap: () {
                   setState(() {
-                    _selectedExecutorId = user['id'];
-                    _executorController.text = user['name'];
+                    _selectedExecutorId = userId;
+                    _executorController.text = userName;
                   });
                   Navigator.pop(context);
                 },

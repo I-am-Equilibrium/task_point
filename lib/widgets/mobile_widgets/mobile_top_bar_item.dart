@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:task_point/constants/colors.dart';
@@ -14,12 +15,18 @@ class _SearchResult {
   final String listId;
   final String listName;
   final String matchedText;
+  final String? executorName;
+  final String? executorAvatarUrl;
+  final bool isExecutorMatch;
 
   _SearchResult({
     required this.taskId,
     required this.listId,
     required this.listName,
     required this.matchedText,
+    this.executorName,
+    this.executorAvatarUrl,
+    required this.isExecutorMatch,
   });
 }
 
@@ -55,6 +62,14 @@ class _MobileTopBarItemState extends State<MobileTopBarItem> {
   List<_SearchResult> _results = [];
   Timer? _debounce;
 
+  final List<Color> _avatarColors = [
+    AppColors.green,
+    AppColors.skyBlue,
+    AppColors.lavendar,
+    AppColors.cheese,
+    AppColors.red,
+  ];
+
   @override
   void initState() {
     super.initState();
@@ -68,6 +83,11 @@ class _MobileTopBarItemState extends State<MobileTopBarItem> {
     _searchController.dispose();
     _debounce?.cancel();
     super.dispose();
+  }
+
+  Color _getRandomColor(String seed) {
+    final int index = seed.hashCode % _avatarColors.length;
+    return _avatarColors[index.abs()];
   }
 
   Future<void> _search(String query) async {
@@ -85,11 +105,33 @@ class _MobileTopBarItemState extends State<MobileTopBarItem> {
     final List<_SearchResult> found = [];
 
     for (final t in allTasks) {
+      String? executorName;
+      String? executorAvatar;
+      bool matchPerformer = false;
+
+      if (t.executor != null && t.executor!.isNotEmpty) {
+        try {
+          final userDoc = await _appwriteService.databases.getDocument(
+            databaseId: AppwriteService.databaseId,
+            collectionId: AppwriteService.usersCollectionId,
+            documentId: t.executor!,
+          );
+          executorName = userDoc.data['name'];
+          executorAvatar = userDoc.data['avatar_url'];
+
+          if (executorName != null && executorName.toLowerCase().contains(q)) {
+            matchPerformer = true;
+          }
+        } catch (e) {
+          debugPrint("Ошибка загрузки данных исполнителя: $e");
+        }
+      }
+
       bool matchInvoice = t.invoice?.toLowerCase().contains(q) ?? false;
       bool matchCompany = t.company?.toLowerCase().contains(q) ?? false;
       bool matchProduct = t.products?.toLowerCase().contains(q) ?? false;
 
-      if (matchInvoice || matchCompany || matchProduct) {
+      if (matchInvoice || matchCompany || matchProduct || matchPerformer) {
         String listName = "Без списка";
         if (t.listId != null && t.listId!.isNotEmpty) {
           try {
@@ -102,16 +144,26 @@ class _MobileTopBarItemState extends State<MobileTopBarItem> {
           } catch (_) {}
         }
 
+        String displayMatchedText = "";
+        if (matchInvoice) {
+          displayMatchedText = "Счет: ${t.invoice}";
+        } else if (matchCompany) {
+          displayMatchedText = "Компания: ${t.company}";
+        } else if (matchPerformer) {
+          displayMatchedText = "";
+        } else {
+          displayMatchedText = "Товары: ${t.products}";
+        }
+
         found.add(
           _SearchResult(
             taskId: t.id,
             listId: t.listId ?? "",
             listName: listName,
-            matchedText: matchInvoice
-                ? t.invoice!
-                : matchCompany
-                ? t.company!
-                : t.products ?? "",
+            matchedText: displayMatchedText,
+            executorName: executorName,
+            executorAvatarUrl: executorAvatar,
+            isExecutorMatch: matchPerformer,
           ),
         );
       }
@@ -125,6 +177,35 @@ class _MobileTopBarItemState extends State<MobileTopBarItem> {
         _closeSearchOverlay();
       }
     }
+  }
+
+  Widget _buildSmallAvatar(String? url, String? name) {
+    final String displayName = name ?? "U";
+    final bool hasAvatar = url != null && url.isNotEmpty;
+
+    return Container(
+      width: 28,
+      height: 28,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: hasAvatar ? null : _getRandomColor(displayName),
+        image: hasAvatar
+            ? DecorationImage(image: NetworkImage(url), fit: BoxFit.cover)
+            : null,
+      ),
+      child: !hasAvatar
+          ? Center(
+              child: Text(
+                displayName[0].toUpperCase(),
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.black,
+                ),
+              ),
+            )
+          : null,
+    );
   }
 
   void _showSearchOverlay() {
@@ -145,7 +226,7 @@ class _MobileTopBarItemState extends State<MobileTopBarItem> {
         child: Material(
           color: Colors.transparent,
           child: Container(
-            constraints: const BoxConstraints(maxHeight: 250),
+            constraints: const BoxConstraints(maxHeight: 350),
             decoration: BoxDecoration(
               color: AppColors.white,
               borderRadius: BorderRadius.circular(15),
@@ -160,29 +241,99 @@ class _MobileTopBarItemState extends State<MobileTopBarItem> {
             child: ClipRRect(
               borderRadius: BorderRadius.circular(15),
               child: ListView.separated(
-                padding: const EdgeInsets.all(10),
+                padding: const EdgeInsets.symmetric(vertical: 5),
                 shrinkWrap: true,
                 itemCount: _results.length,
                 separatorBuilder: (_, __) =>
                     const Divider(height: 1, color: AppColors.paper),
                 itemBuilder: (context, index) {
                   final r = _results[index];
+
+                  String subtitleText = r.matchedText;
+                  if (r.isExecutorMatch && r.executorName != null) {
+                    subtitleText = "Исполнитель: ${r.executorName}";
+                  }
+
+                  Widget leadingWidget;
+                  final bool hasAvatar =
+                      r.executorAvatarUrl != null &&
+                      r.executorAvatarUrl!.isNotEmpty;
+                  final bool hasExecutor =
+                      r.executorName != null && r.executorName!.isNotEmpty;
+
+                  if (hasAvatar) {
+                    leadingWidget = Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        image: DecorationImage(
+                          image: NetworkImage(r.executorAvatarUrl!),
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                    );
+                  } else if (hasExecutor) {
+                    leadingWidget = Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: _getRandomColor(r.executorName!),
+                      ),
+                      child: Center(
+                        child: Text(
+                          r.executorName![0].toUpperCase(),
+                          style: const TextStyle(
+                            color: AppColors.black,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+                    );
+                  } else {
+                    leadingWidget = Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: AppColors.white.withOpacity(0.9),
+                        border: Border.all(
+                          color: AppColors.paper.withOpacity(0.2),
+                        ),
+                      ),
+                      child: const Center(
+                        child: Icon(
+                          Icons.person,
+                          size: 20,
+                          color: AppColors.grey,
+                        ),
+                      ),
+                    );
+                  }
+
                   return ListTile(
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 10),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 15,
+                      vertical: 5,
+                    ),
+                    leading: leadingWidget,
                     title: Text(
                       "Список: ${r.listName}",
                       style: const TextStyle(
                         fontWeight: FontWeight.bold,
-                        fontSize: 15,
+                        fontSize: 14,
+                        color: AppColors.black,
                       ),
                     ),
                     subtitle: Text(
-                      r.matchedText,
+                      subtitleText,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 13,
-                        fontWeight: FontWeight.w500,
+                        color: AppColors.black.withOpacity(0.6),
                       ),
                     ),
                     onTap: () {
@@ -376,9 +527,8 @@ class _MobileTopBarItemState extends State<MobileTopBarItem> {
   Widget _buildAvatar() {
     final user = authState.currentUser;
     final bool hasAvatar = _avatarUrl != null && _avatarUrl!.trim().isNotEmpty;
-    final String firstLetter = (user?.name.isNotEmpty == true)
-        ? user!.name.trim()[0].toUpperCase()
-        : 'A';
+    final String name = user?.name ?? 'A';
+    final String firstLetter = name.trim()[0].toUpperCase();
 
     return Container(
       width: 45,
@@ -386,7 +536,7 @@ class _MobileTopBarItemState extends State<MobileTopBarItem> {
       alignment: Alignment.center,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: hasAvatar ? null : AppColors.skyBlue,
+        color: hasAvatar ? null : _getRandomColor(name),
         image: hasAvatar
             ? DecorationImage(
                 image: NetworkImage(_avatarUrl!),
@@ -416,7 +566,6 @@ class _MobileTopBarItemState extends State<MobileTopBarItem> {
     return GestureDetector(
       onTap: onTap,
       child: Stack(
-        clipBehavior: Clip.none,
         children: [
           Container(
             width: 45,

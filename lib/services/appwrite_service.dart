@@ -1152,7 +1152,6 @@ class AppwriteService {
     };
   }
 
-  /// Получение email пользователя по его userId
   Future<String?> getUserEmailById(String userId) async {
     try {
       final userDoc = await databases.getDocument(

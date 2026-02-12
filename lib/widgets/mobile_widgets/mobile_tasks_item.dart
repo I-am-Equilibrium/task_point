@@ -57,6 +57,18 @@ class _MobileTasksScreenState extends State<MobileTasksScreen> {
   final ScrollController _scrollController = ScrollController();
   double _itemHeight = 160.0;
 
+  final List<Color> _avatarColors = [
+    AppColors.green,
+    AppColors.skyBlue,
+    AppColors.lavendar,
+    AppColors.cheese,
+    AppColors.red,
+  ];
+
+  Color _getAvatarColor(String userId) {
+    return _avatarColors[userId.hashCode.abs() % _avatarColors.length];
+  }
+
   @override
   void initState() {
     super.initState();
