@@ -600,8 +600,6 @@ class _MobileReadTaskScreenState extends State<MobileReadTaskScreen> {
   Future<void> _updateTask() async {
     if (_productsController.text.isEmpty) return;
 
-    debugPrint("Сохраняю УПД: ${_utdController.text}");
-
     final updatedTask = widget.task.copyWith(
       invoice: _invoiceController.text,
       utd: _utdController.text,
@@ -609,10 +607,11 @@ class _MobileReadTaskScreenState extends State<MobileReadTaskScreen> {
       products: _productsController.text,
       date: _selectedDate?.toIso8601String(),
       address: _addressController.text,
-      executor: _selectedExecutorId,
       comment: _commentController.text,
       reminder: _selectedReminderDate?.toIso8601String(),
     );
+
+    updatedTask.executor = _selectedExecutorId;
 
     try {
       await AppwriteService().updateTask(updatedTask);
